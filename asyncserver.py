@@ -11,7 +11,16 @@ from kubessh import Shell
 async def handle_client(process):
     username = process.channel.get_extra_info('username')
     shell = Shell(username, 'default', 'ubuntu:latest')
-    proc = shell.execute(shlex.split(process.get_command()))
+
+    # Execute user's command if we are given it.
+    # Otherwise spawn /bin/bash
+    # FIXME: Make shell configurable
+    raw_command = process.get_command()
+    if raw_command is None:
+        command = ['/bin/bash']
+    else:
+        command = shlex.split(raw_command)
+    proc = shell.execute(command)
     await process.redirect(proc, proc, proc)
     # Run this in an executor, since proc.wait blocks
     loop = asyncio.get_event_loop()
