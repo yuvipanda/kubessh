@@ -8,6 +8,8 @@ name = "pypi"
 [packages]
 
 kubernetes = "*"
+asyncssh = "*"
+ptyprocess = "*"
 
 
 [dev-packages]
