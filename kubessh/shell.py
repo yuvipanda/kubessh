@@ -81,6 +81,7 @@ class Shell:
 
         command = [
             'kubectl',
+            '--namespace', self.namespace,
             'exec',
             '--stdin',
             '--tty',
