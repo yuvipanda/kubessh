@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "de8dce8cb0cfbe949593c3785c0280305ebad3eeb46bac4b07ec4f44a256e96a"
+            "sha256": "92c9c8fbfa8370961eeac2e7f815d0ba13344a8b7139e485c3a7d0a3b9844709"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -105,6 +105,13 @@
                 "sha256:f6c821ac253c19f2ad4c8691633ae1d1a17f120d5b01ea1d256d7b602bc59887"
             ],
             "version": "==2.2.2"
+        },
+        "escapism": {
+            "hashes": [
+                "sha256:5f1cc1fa04a95f5b85b3da194750f8a71846d493ea332f62e8798949f10c9b86",
+                "sha256:bde950505d0a2c0fce069620f8ffb99464635851146c25e8d1be882ca9a1bb75"
+            ],
+            "version": "==1.0.0"
         },
         "google-auth": {
             "hashes": [

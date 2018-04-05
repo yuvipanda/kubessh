@@ -7,6 +7,7 @@ import argparse
 import os
 from kubernetes import client as k
 import kubernetes.config
+import escapism
 
 try:
     kubernetes.config.load_kube_config()
@@ -20,18 +21,25 @@ class Shell:
     """
     A shell running in a pod
     """
-    def __init__(self, name, namespace, image):
+    def __init__(self, name, namespace, image, command):
         self.name = name
         self.namespace = namespace
         self.image = image
+        self.command = command
+
+        self.labels = {
+            'kubessh.yuvi.in/username': escapism.escape(name, escape_char='-'),
+            'kubessh.yuvi.in/image': escapism.escape(image, escape_char='-')
+        }
+
+    def _make_labelselector(self, labels):
+        return ','.join([f'{k}={v}' for k, v in labels.items()])
 
     def make_pod_spec(self):
         return k.V1Pod(
             metadata=k.V1ObjectMeta(
                 generate_name=self.name + '-',
-                labels={
-                    'kubessh.yuvi.in/username': self.name
-                }
+                labels=self.labels
             ),
             spec=k.V1PodSpec(
                 restart_policy='Never',
@@ -62,9 +70,9 @@ class Shell:
 
         return remaining_pods
 
-    def execute(self, command, terminal_size):
+    def execute(self, terminal_size):
         # Get list of current running pods that might be for our user
-        all_user_pods = v1.list_namespaced_pod(self.namespace, label_selector=f'kubessh.yuvi.in/username={self.name}')
+        all_user_pods = v1.list_namespaced_pod(self.namespace, label_selector=self._make_labelselector(self.labels))
 
         current_user_pods = self.cleanup_pods(all_user_pods)
 
@@ -86,5 +94,5 @@ class Shell:
             '--stdin',
             '--tty',
             pod.metadata.name,
-        ] + command
+        ] + self.command
         return PtyProcess.spawn(argv=command, dimensions=terminal_size)

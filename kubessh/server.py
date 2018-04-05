@@ -10,22 +10,42 @@ import asyncssh
 
 from kubessh.shell import Shell
 
+shell_argparser = argparse.ArgumentParser()
+shell_argparser.add_argument(
+    '--image',
+    default='alpine:3.6',
+    help='Image to launch for this shell'
+)
+shell_argparser.add_argument(
+    'command',
+    nargs='*',
+    default=['/bin/sh']
+)
 
-async def handle_client(default_namespace, process):
+def make_shell(process, default_namespace):
     username = process.channel.get_extra_info('username')
-    shell = Shell(username, default_namespace, 'alpine:3.6')
 
     # Execute user's command if we are given it.
     # Otherwise spawn /bin/bash
     # FIXME: Make shell configurable
     raw_command = process.get_command()
     if raw_command is None:
-        command = ['/bin/sh']
-    else:
-        command = shlex.split(raw_command)
+        raw_command = ''
+
+    shell_args = shell_argparser.parse_args(shlex.split(raw_command))
+    logging.info(shell_args)
+
+    return Shell(username, default_namespace, shell_args.image, shell_args.command)
+
+async def handle_client(default_namespace, process):
+    shell = make_shell(process, default_namespace)
+
     term_size = process.get_terminal_size()
-    proc = shell.execute(command, (term_size[1], term_size[0]))
-    await process.redirect(proc, proc, proc)
+    proc = shell.execute((term_size[1], term_size[0]))
+    try:
+        await process.redirect(proc, proc, proc)
+    except asyncssh.misc.TerminalSizeChanged as exc:
+        logging.warn("Terminal Size Changed!")
     # Run this in an executor, since proc.wait blocks
     loop = asyncio.get_event_loop()
     ret = await loop.run_in_executor(None, proc.wait)
