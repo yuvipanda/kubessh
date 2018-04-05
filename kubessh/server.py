@@ -39,10 +39,10 @@ class Server(asyncssh.SSHServer):
     def validate_password(self, username, password):
         return username == password
 
-async def start_server(default_namespace, ssh_host_key):
+async def start_server(port, default_namespace, ssh_host_key):
     await asyncssh.create_server(
         host='', 
-        port=8022,
+        port=port,
         server_factory=Server, process_factory=partial(handle_client, default_namespace),
         kex_algs=[alg.decode('ascii') for alg in asyncssh.kex.get_kex_algs()],
         server_host_keys=[ssh_host_key],
@@ -55,6 +55,12 @@ def main():
         '--debug',
         action='store_true',
         help="Enable debugging Logging"
+    )
+    argparser.add_argument(
+        '--port',
+        type=int,
+        help='Port to listen on',
+        default=8022
     )
 
     argparser.add_argument(
@@ -95,7 +101,7 @@ def main():
 
     loop = asyncio.get_event_loop()
 
-    loop.run_until_complete(start_server(args.default_spawn_namespace, ssh_host_key))
+    loop.run_until_complete(start_server(args.port, args.default_spawn_namespace, ssh_host_key))
     loop.run_forever()
 
 if __name__ == '__main__':
