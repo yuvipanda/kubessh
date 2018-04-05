@@ -62,7 +62,7 @@ class Shell:
 
         return remaining_pods
 
-    def execute(self, command):
+    def execute(self, command, terminal_size):
         # Get list of current running pods that might be for our user
         all_user_pods = v1.list_namespaced_pod(self.namespace, label_selector=f'kubessh.yuvi.in/username={self.name}')
 
@@ -87,4 +87,4 @@ class Shell:
             '--tty',
             pod.metadata.name,
         ] + command
-        return PtyProcess.spawn(argv=command)
+        return PtyProcess.spawn(argv=command, dimensions=terminal_size)

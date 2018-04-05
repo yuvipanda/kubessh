@@ -23,7 +23,8 @@ async def handle_client(default_namespace, process):
         command = ['/bin/sh']
     else:
         command = shlex.split(raw_command)
-    proc = shell.execute(command)
+    term_size = process.get_terminal_size()
+    proc = shell.execute(command, (term_size[1], term_size[0]))
     await process.redirect(proc, proc, proc)
     # Run this in an executor, since proc.wait blocks
     loop = asyncio.get_event_loop()
