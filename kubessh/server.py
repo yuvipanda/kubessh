@@ -39,13 +39,13 @@ class Server(asyncssh.SSHServer):
     def validate_password(self, username, password):
         return username == password
 
-async def start_server(default_namespace):
+async def start_server(default_namespace, ssh_host_key):
     await asyncssh.create_server(
         host='', 
         port=8022,
         server_factory=Server, process_factory=partial(handle_client, default_namespace),
         kex_algs=[alg.decode('ascii') for alg in asyncssh.kex.get_kex_algs()],
-        server_host_keys='server',
+        server_host_keys=[ssh_host_key],
         session_encoding=None
     )
 
@@ -63,8 +63,18 @@ def main():
         default=None
     )
 
+    argparser.add_argument(
+        '--host-key-path',
+        help='Path to host ssh private key. If unspecified, an ephemeral key is generated for this session',
+        default=None
+    )
+
     args = argparser.parse_args()
 
+    logging.basicConfig(format='%(asctime)s %(message)s', level='DEBUG' if args.debug else 'INFO')
+
+    # If no namespace to spawn into is specified, use current pod's namespace by default
+    # if we aren't running inside k8s, just use the `default` namespace
     if args.default_spawn_namespace is None:
         if os.path.exists('/var/run/secrets/kubernetes.io/serviceaccount'):
             with open('/var/run/secrets/kubernetes.io/serviceaccount') as f:
@@ -72,11 +82,20 @@ def main():
         else:
             args.default_spawn_namespace = 'default'
 
-    logging.basicConfig(format='%(asctime)s %(message)s', level='DEBUG' if args.debug else 'INFO')
+
+    if args.host_key_path is None:
+        # We'll generate a temporary key in-memory key for this run only
+        ssh_host_key = asyncssh.generate_private_key('ssh-rsa')
+        logging.warn('No --host-key-path provided, generating an ephemeral host key')
+    else:
+        with open(args.host_key_path) as f:
+            ssh_host_key = asyncssh.import_private_key(f.read())
+        logging.info(f'Loaded host key from {args.host_key_path}')
+
 
     loop = asyncio.get_event_loop()
 
-    loop.run_until_complete(start_server(args.default_spawn_namespace))
+    loop.run_until_complete(start_server(args.default_spawn_namespace, ssh_host_key))
     loop.run_forever()
 
 if __name__ == '__main__':
