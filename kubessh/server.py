@@ -6,7 +6,8 @@ import argparse
 
 import asyncssh
 
-from kubessh import Shell
+from kubessh.shell import Shell
+
 
 async def handle_client(process):
     username = process.channel.get_extra_info('username')
