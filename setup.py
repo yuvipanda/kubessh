@@ -14,4 +14,9 @@ setuptools.setup(
         'asyncssh==1.12.*',
         'ptyprocess==0.5.*'
     ],
+    entry_points = {
+        'console_scripts': [
+            'kubessh=kubessh.server:main'
+        ]
+    }
 )
