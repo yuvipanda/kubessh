@@ -41,15 +41,38 @@ async def handle_client(default_namespace, process):
     shell = make_shell(process, default_namespace)
 
     term_size = process.get_terminal_size()
-    proc = shell.execute((term_size[1], term_size[0]))
-    try:
-        await process.redirect(proc, proc, proc)
-    except asyncssh.misc.TerminalSizeChanged as exc:
-        logging.warn("Terminal Size Changed!")
-    # Run this in an executor, since proc.wait blocks
+    proc = await shell.execute((term_size[1], term_size[0]))
+
+    await process.redirect(proc, proc, proc)
+
     loop = asyncio.get_event_loop()
-    ret = await loop.run_in_executor(None, proc.wait)
-    process.exit(ret)
+
+    # Future for spawned process dying
+    shell_completed = loop.run_in_executor(None, proc.wait)
+    # Future for ssh connection closing
+    read_stdin = asyncio.ensure_future(process.stdin.read())
+
+    # This loops is here to pass TerminalSizeChanged events through to ptyprocess
+    # It needs to break when the ssh connection is gone or when the spawned process is gone.
+    # See https://github.com/ronf/asyncssh/issues/134 for info on how this works
+    while not process.stdin.at_eof() and not shell_completed.done():
+        try:
+            if read_stdin.done():
+                read_stdin = asyncio.ensure_future(process.stdin.read())
+            done, _ = await asyncio.wait([read_stdin, shell_completed], return_when=asyncio.FIRST_COMPLETED)
+            # asyncio.wait doesn't await the futures - it only waits for them to complete.
+            # We need to explicitly await them to retreive any exceptions from them
+            for future in done:
+                await future
+        except asyncssh.misc.TerminalSizeChanged as exc:
+            proc.setwinsize(exc.height, exc.width)
+
+    # SSH Client is gone, but process is still alive. Let's kill it!
+    if process.stdin.at_eof() and not shell_completed.done():
+        await loop.run_in_executor(None, proc.terminate, force=True)
+        logging.info('Terminated process')
+
+    process.exit(shell_completed.result())
 
 
 
