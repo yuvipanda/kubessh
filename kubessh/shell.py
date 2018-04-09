@@ -8,6 +8,8 @@ import os
 from kubernetes import client as k
 import kubernetes.config
 import escapism
+import functools
+from concurrent.futures import ThreadPoolExecutor
 
 try:
     kubernetes.config.load_kube_config()
@@ -32,6 +34,17 @@ class Shell:
             'kubessh.yuvi.in/image': escapism.escape(image, escape_char='-')
         }
 
+        # Threads required to perform all activities in this shell
+        # These should probably be a well sized global threadpool, since this is being
+        # used as a sort of queue. We will currently use a threadpool of 1 thread per shell
+        # for simplicity. The number of threads here needs to be the maximum number of threads
+        # this object could possibly use at the same time. Eventually, this needs to be a
+        # global threadpool with well enforced limits #FIXME
+        self.kube_api_threadpool = ThreadPoolExecutor(1)
+
+    def _run_in_executor(self, func, *args, **kwargs):
+        return asyncio.get_event_loop().run_in_executor(self.kube_api_threadpool, functools.partial(func, *args, **kwargs))
+
     def _make_labelselector(self, labels):
         return ','.join([f'{k}={v}' for k, v in labels.items()])
 
@@ -55,7 +68,7 @@ class Shell:
             )
         )
 
-    def cleanup_pods(self, pods):
+    async def cleanup_pods(self, pods):
         """
         Delete all Failed and Succeeded pods
 
@@ -64,7 +77,10 @@ class Shell:
         remaining_pods = []
         for pod in pods.items:
             if pod.status.phase == 'Failed' or pod.status.phase == 'Succeeded':
-                v1.delete_namespaced_pod(pod.metadata.name, pod.metadata.namespace, k.V1DeleteOptions(grace_period_seconds=0))
+                await self._run_in_executor(
+                    v1.delete_namespaced_pod,
+                    pod.metadata.name, pod.metadata.namespace, k.V1DeleteOptions(grace_period_seconds=0)
+                )
             else:
                 remaining_pods.append(pod)
 
@@ -72,20 +88,29 @@ class Shell:
 
     async def execute(self, terminal_size):
         # Get list of current running pods that might be for our user
-        all_user_pods = v1.list_namespaced_pod(self.namespace, label_selector=self._make_labelselector(self.labels))
+        all_user_pods = await self._run_in_executor(
+            v1.list_namespaced_pod,
+            self.namespace, label_selector=self._make_labelselector(self.labels)
+        )
 
-        current_user_pods = self.cleanup_pods(all_user_pods)
+        current_user_pods = await self.cleanup_pods(all_user_pods)
 
         if len(current_user_pods) == 0:
             # No pods exist! Let's create some!
-            pod = v1.create_namespaced_pod(self.namespace, self.make_pod_spec())
+            pod = await self._run_in_executor(
+                v1.create_namespaced_pod,
+                self.namespace, self.make_pod_spec()
+            )
         else:
             pod = current_user_pods[0]
             # FIXME: What do we do if we have more than 1 running user pod?
 
         while pod.status.phase != 'Running':
-            pod = v1.read_namespaced_pod(pod.metadata.name, pod.metadata.namespace)
             await asyncio.sleep(1)
+            pod = await self._run_in_executor(
+                v1.read_namespaced_pod,
+                pod.metadata.name, pod.metadata.namespace
+            )
 
         command = [
             'kubectl',
@@ -95,4 +120,5 @@ class Shell:
             '--tty',
             pod.metadata.name,
         ] + self.command
+        # FIXME: Is this async friendly?
         return PtyProcess.spawn(argv=command, dimensions=terminal_size)
