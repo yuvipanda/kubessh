@@ -70,7 +70,7 @@ class Shell:
 
         return remaining_pods
 
-    def execute(self, terminal_size):
+    async def execute(self, terminal_size):
         # Get list of current running pods that might be for our user
         all_user_pods = v1.list_namespaced_pod(self.namespace, label_selector=self._make_labelselector(self.labels))
 
@@ -85,7 +85,7 @@ class Shell:
 
         while pod.status.phase != 'Running':
             pod = v1.read_namespaced_pod(pod.metadata.name, pod.metadata.namespace)
-            time.sleep(1)
+            await asyncio.sleep(1)
 
         command = [
             'kubectl',
