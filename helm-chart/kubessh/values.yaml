@@ -1,0 +1,22 @@
+replicaCount: 1
+
+image:
+  repository: yuvipanda/kubessh-kubessh
+  tag: 045b100
+  pullPolicy: Always
+
+  name: yuvipanda/kubessh-kubessh
+service:
+  type: LoadBalancer
+  port: 22
+
+resources: {}
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+rbac:
+  enabled: true

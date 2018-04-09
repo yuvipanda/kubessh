@@ -1,0 +1,22 @@
+charts:
+  - name: kubessh
+    imagePrefix: yuvipanda/kubessh-
+    repo:
+      git: yuvipanda/helm-charts
+      published: https://yuvipanda.github.io/helm-charts
+    paths:
+      - ../setup.py
+      - ../kubessh
+    images:
+      kubessh:
+        # Context to send to docker build for use by the Dockerfile
+        contextPath: ..
+        # Dockerfile path relative to chartpress.yaml
+        dockerfilePath: ../Dockerfile
+        valuesPath: image
+        # additional paths relevant to the image
+        # in addition to image directory itself
+        # paths are relative to build.py
+        paths:
+          - ../setup.py
+          - ../kubessh
