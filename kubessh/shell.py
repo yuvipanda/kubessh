@@ -9,6 +9,7 @@ from kubernetes import client as k
 import kubernetes.config
 import escapism
 import functools
+from enum import Enum
 from concurrent.futures import ThreadPoolExecutor
 
 try:
@@ -18,6 +19,11 @@ except FileNotFoundError:
 
 # FIXME: Figure out if making this global is a problem
 v1 = k.CoreV1Api()
+
+class ShellState(Enum):
+    UNKNOWN = 0
+    STARTING = 1
+    RUNNING = 2
 
 class Shell:
     """
@@ -97,6 +103,7 @@ class Shell:
 
         if len(current_user_pods) == 0:
             # No pods exist! Let's create some!
+            yield ShellState.STARTING
             pod = await self._run_in_executor(
                 v1.create_namespaced_pod,
                 self.namespace, self.make_pod_spec()
@@ -106,6 +113,7 @@ class Shell:
             # FIXME: What do we do if we have more than 1 running user pod?
 
         while pod.status.phase != 'Running':
+            yield ShellState.STARTING
             await asyncio.sleep(1)
             pod = await self._run_in_executor(
                 v1.read_namespaced_pod,
@@ -120,5 +128,7 @@ class Shell:
             '--tty',
             pod.metadata.name,
         ] + self.command
+
         # FIXME: Is this async friendly?
-        return PtyProcess.spawn(argv=command, dimensions=terminal_size)
+        self.process = PtyProcess.spawn(argv=command, dimensions=terminal_size)
+        yield ShellState.RUNNING

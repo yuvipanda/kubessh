@@ -6,10 +6,11 @@ import argparse
 import os
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
+import itertools
 
 import asyncssh
 
-from kubessh.shell import Shell
+from kubessh.shell import Shell, ShellState
 
 shell_argparser = argparse.ArgumentParser()
 shell_argparser.add_argument(
@@ -42,7 +43,15 @@ async def handle_client(default_namespace, process):
     shell = make_shell(process, default_namespace)
 
     term_size = process.get_terminal_size()
-    proc = await shell.execute((term_size[1], term_size[0]))
+    spinner = itertools.cycle(['-', '/', '|', '\\'])
+    async for status in shell.execute((term_size[1], term_size[0])):
+        if status == ShellState.RUNNING:
+            process.stdout.write('\r\033[K'.encode('ascii'))
+        elif status == ShellState.STARTING:
+            process.stdout.write('\b'.encode('ascii'))
+            process.stdout.write(next(spinner).encode('ascii'))
+
+    proc = shell.process
 
     await process.redirect(proc, proc, proc)
 
