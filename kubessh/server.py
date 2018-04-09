@@ -4,6 +4,7 @@ import logging
 import asyncio
 import argparse
 import os
+from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 
 import asyncssh
@@ -48,7 +49,11 @@ async def handle_client(default_namespace, process):
     loop = asyncio.get_event_loop()
 
     # Future for spawned process dying
-    shell_completed = loop.run_in_executor(None, proc.wait)
+    # We explicitly create a threadpool of 1 threads for every run_in_executor call
+    # to help reason about interaction between asyncio and threads. A global threadpool
+    # is fine when using it as a queue (when doing HTTP requests, for example), but not
+    # here since we could end up deadlocking easily.
+    shell_completed = loop.run_in_executor(ThreadPoolExecutor(1), proc.wait)
     # Future for ssh connection closing
     read_stdin = asyncio.ensure_future(process.stdin.read())
 
@@ -69,7 +74,7 @@ async def handle_client(default_namespace, process):
 
     # SSH Client is gone, but process is still alive. Let's kill it!
     if process.stdin.at_eof() and not shell_completed.done():
-        await loop.run_in_executor(None, proc.terminate, force=True)
+        await loop.run_in_executor(ThreadPoolExecutor(1), proc.terminate, force=True)
         logging.info('Terminated process')
 
     process.exit(shell_completed.result())
