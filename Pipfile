@@ -15,6 +15,7 @@ escapism = "*"
 
 [dev-packages]
 
+pylint = "*"
 
 
 [requires]

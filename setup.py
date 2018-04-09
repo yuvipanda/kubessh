@@ -12,7 +12,8 @@ setuptools.setup(
     install_requires=[
         'kubernetes==5.*',
         'asyncssh==1.12.*',
-        'ptyprocess==0.5.*'
+        'ptyprocess==0.5.*',
+        'escapism'
     ],
     entry_points = {
         'console_scripts': [
