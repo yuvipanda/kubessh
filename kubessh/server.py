@@ -126,8 +126,8 @@ def main():
     # If no namespace to spawn into is specified, use current pod's namespace by default
     # if we aren't running inside k8s, just use the `default` namespace
     if args.default_spawn_namespace is None:
-        if os.path.exists('/var/run/secrets/kubernetes.io/serviceaccount'):
-            with open('/var/run/secrets/kubernetes.io/serviceaccount') as f:
+        if os.path.exists('/var/run/secrets/kubernetes.io/serviceaccount/namespace'):
+            with open('/var/run/secrets/kubernetes.io/serviceaccount/namespace') as f:
                 args.default_spawn_namespace = f.read().strip()
         else:
             args.default_spawn_namespace = 'default'
