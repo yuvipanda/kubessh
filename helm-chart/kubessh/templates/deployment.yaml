@@ -22,10 +22,22 @@ spec:
       {{ if .Values.rbac.enabled }}
       serviceAccountName: {{ template "..fullname" . }}
       {{ end }}
+      volumes:
+        - name: secrets
+          secret:
+            secretName: {{ template "..fullname" . }}
       containers:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - kubessh
+            - --host-key-path
+            - /etc/kubessh/secrets/kubessh.host-key
+          volumeMounts:
+            - name: secrets
+              mountPath: /etc/kubessh/secrets
+              readOnly: true
           ports:
             - name: ssh
               containerPort: 8022
