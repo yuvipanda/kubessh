@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: yuvipanda/kubessh-kubessh
-  tag: 045b100
+  tag: f8f606b
   pullPolicy: Always
 
   name: yuvipanda/kubessh-kubessh
