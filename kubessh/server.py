@@ -33,11 +33,17 @@ def make_shell(process, default_namespace):
     raw_command = process.get_command()
     if raw_command is None:
         raw_command = ''
+    try:
+        shell_args = shell_argparser.parse_args(shlex.split(raw_command))
+        command = shell_args.command
+        image = shell_args.image
+    except SystemExit:
+        # This just means there's an argument parser error
+        # We should then treat this as purely a command
+        command = shlex.split(raw_command)
+        image = 'alpine:3.6'
 
-    shell_args = shell_argparser.parse_args(shlex.split(raw_command))
-    logging.info(shell_args)
-
-    return Shell(username, default_namespace, shell_args.image, shell_args.command)
+    return Shell(username, default_namespace, image, command)
 
 async def handle_client(default_namespace, process):
     shell = make_shell(process, default_namespace)

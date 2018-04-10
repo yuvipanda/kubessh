@@ -127,6 +127,7 @@ class Shell:
             '--stdin',
             '--tty',
             pod.metadata.name,
+            '--'
         ] + self.command
 
         # FIXME: Is this async friendly?
