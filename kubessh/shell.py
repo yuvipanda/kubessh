@@ -11,6 +11,10 @@ import escapism
 import functools
 from enum import Enum
 from concurrent.futures import ThreadPoolExecutor
+from traitlets.config import LoggingConfigurable
+from traitlets import Dict, Unicode, List
+
+from .serialization import make_pod_from_dict
 
 try:
     kubernetes.config.load_kube_config()
@@ -25,19 +29,79 @@ class ShellState(Enum):
     STARTING = 1
     RUNNING = 2
 
-class Shell:
+class Shell(LoggingConfigurable):
     """
     A shell running in a pod
     """
-    def __init__(self, name, namespace, image, command):
-        self.name = name
-        self.namespace = namespace
-        self.image = image
-        self.command = command
+    pod_template = Dict(
+        {
+            "apiVersion": "v1",
+            "kind": "Pod",
+            "metadata": {},
+            "spec": {
+                "containers": [{
+                    "command": ["/bin/sh"],
+                    "image": "alpine:3.6",
+                    "name": "shell",
+                    "stdin": True,
+                    "tty": True,
+                }],
+            },
+        },
+        help="""
+        Pod Template to use for spawning user pods
+        """,
+        config=True
+    )
 
-        self.labels = {
-            'kubessh.yuvi.in/username': escapism.escape(name, escape_char='-'),
-            'kubessh.yuvi.in/image': escapism.escape(image, escape_char='-')
+    username = Unicode(
+        None,
+        allow_none=True,
+        help="""
+        Username to spawn this shell as
+        """,
+        config=True
+    )
+
+    namespace = Unicode(
+        None,
+        allow_none=True,
+        help="""
+        Namespace to spawn this shell into
+        """,
+        config=True
+    )
+
+    image = Unicode(
+        'alpine:3.6',
+        help="""
+        Image to spawn for this shell.
+
+        Will override image set in pod_template
+        """,
+        config=True
+    )
+
+    command = List(
+        ['/bin/sh'],
+        help="""
+        Command to run when shell is spawned
+        """,
+        config=True
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        if self.username is None:
+            raise ValueError('Username trait must be set when spawning shell')
+
+        if self.namespace is None:
+            raise ValueError('Namespace must be set to spawn shell')
+
+        self.required_labels = {
+            'kubessh.yuvi.in/username': escapism.escape(self.username, escape_char='-'),
+            'kubessh.yuvi.in/image': escapism.escape(self.image, escape_char='-')
         }
 
         # Threads required to perform all activities in this shell
@@ -55,24 +119,16 @@ class Shell:
         return ','.join([f'{k}={v}' for k, v in labels.items()])
 
     def make_pod_spec(self):
-        return k.V1Pod(
-            metadata=k.V1ObjectMeta(
-                generate_name=self.name + '-',
-                labels=self.labels
-            ),
-            spec=k.V1PodSpec(
-                restart_policy='Never',
-                containers=[
-                    k.V1Container(
-                        name='shell',
-                        image=self.image,
-                        stdin=True,
-                        tty=True,
-                        command=['/bin/sh']
-                    )
-                ],
-            )
-        )
+        pod = make_pod_from_dict(self.pod_template)
+        pod.metadata.generate_name = escapism.escape(self.username, escape_char='-')
+
+        if pod.metadata.labels is None:
+            pod.metadata.labels = {}
+        pod.metadata.labels.update(required_labels)
+
+        if self.image:
+            pod.spec.containers[0].image = self.image
+        return pod
 
     async def cleanup_pods(self, pods):
         """
@@ -96,7 +152,7 @@ class Shell:
         # Get list of current running pods that might be for our user
         all_user_pods = await self._run_in_executor(
             v1.list_namespaced_pod,
-            self.namespace, label_selector=self._make_labelselector(self.labels)
+            self.namespace, label_selector=self._make_labelselector(self.required_labels)
         )
 
         current_user_pods = await self.cleanup_pods(all_user_pods)

@@ -11,11 +11,13 @@ kubernetes = "*"
 asyncssh = "*"
 ptyprocess = "*"
 escapism = "*"
+traitlets = "*"
 
 
 [dev-packages]
 
 pylint = "*"
+pytest = "*"
 
 
 [requires]
