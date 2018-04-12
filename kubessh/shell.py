@@ -98,14 +98,10 @@ class UserPod(LoggingConfigurable):
         config=True
     )
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, username, namespace, *args, **kwargs):
+        self.username = username
+        self.namespace = namespace
         super().__init__(*args, **kwargs)
-
-        if self.username is None:
-            raise ValueError('Username trait must be set when spawning shell')
-
-        if self.namespace is None:
-            raise ValueError('Namespace must be set to spawn shell')
 
         self.required_labels = {
             'kubessh.yuvi.in/username': escapism.escape(self.username, escape_char='-'),
