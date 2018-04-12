@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import asyncio
 import subprocess
 from ptyprocess import PtyProcess
@@ -29,9 +28,17 @@ class ShellState(Enum):
     STARTING = 1
     RUNNING = 2
 
-class Shell(LoggingConfigurable):
+class UserPod(LoggingConfigurable):
     """
-    A shell running in a pod
+    A kubernetes pod of specific configuration for one user.
+
+    There might be multiple shells opened concurrently to this pod.
+
+    Config from administrators and the ssh command from the user are
+    mapped here to a running Kubernetes pod. This allows multiple ssh
+    sessions to be running concurrently in the same kubernetes pod.
+
+    Config from administrators is set via traitlets in config.
     """
     pod_template = Dict(
         {
@@ -49,7 +56,11 @@ class Shell(LoggingConfigurable):
             },
         },
         help="""
-        Pod Template to use for spawning user pods
+        Template for creating user pods.
+
+        This should be a dict containing a fully specified Kubernetes
+        Pod object. Specific components of it may be changed to
+        match the configuration of the Shell object requested.
         """,
         config=True
     )
@@ -58,7 +69,9 @@ class Shell(LoggingConfigurable):
         None,
         allow_none=True,
         help="""
-        Username to spawn this shell as
+        Username this shell belongs to.
+
+        Will be sanitized wherever required.
         """,
         config=True
     )
@@ -67,25 +80,20 @@ class Shell(LoggingConfigurable):
         None,
         allow_none=True,
         help="""
-        Namespace to spawn this shell into
+        Kubernetes Namespace this shell will be spawned into.
+
+        This namespace must already exist.
         """,
         config=True
     )
 
     image = Unicode(
-        'alpine:3.6',
+        None,
+        allow_none=True,
         help="""
-        Image to spawn for this shell.
+        Primary docker image this shell will be spawned in.
 
-        Will override image set in pod_template
-        """,
-        config=True
-    )
-
-    command = List(
-        ['/bin/sh'],
-        help="""
-        Command to run when shell is spawned
+        When set to None, the image in `pod_template` is preserved
         """,
         config=True
     )
@@ -120,11 +128,11 @@ class Shell(LoggingConfigurable):
 
     def make_pod_spec(self):
         pod = make_pod_from_dict(self.pod_template)
-        pod.metadata.generate_name = escapism.escape(self.username, escape_char='-')
+        pod.metadata.generate_name = escapism.escape(self.username, escape_char='-') + '-'
 
         if pod.metadata.labels is None:
             pod.metadata.labels = {}
-        pod.metadata.labels.update(required_labels)
+        pod.metadata.labels.update(self.required_labels)
 
         if self.image:
             pod.spec.containers[0].image = self.image
@@ -148,7 +156,7 @@ class Shell(LoggingConfigurable):
 
         return remaining_pods
 
-    async def execute(self, terminal_size):
+    async def ensure_running(self):
         # Get list of current running pods that might be for our user
         all_user_pods = await self._run_in_executor(
             v1.list_namespaced_pod,
@@ -175,17 +183,36 @@ class Shell(LoggingConfigurable):
                 v1.read_namespaced_pod,
                 pod.metadata.name, pod.metadata.namespace
             )
+        yield ShellState.RUNNING
+        self.pod = pod
 
+class Shell(LoggingConfigurable):
+    command = List(
+        ['/bin/sh'],
+        help="""
+        Command to run when shell is spawned.
+
+        The pod will always run `/bin/sh` as its primary command.
+        This command is used instead when we `kubectl exec` into the
+        pod to start a shell.
+        """,
+        config=True
+    )
+
+    def __init__(self, user_pod, *args, **kwargs):
+        self.user_pod = user_pod
+        super().__init__(*args, **kwargs)
+
+    async def execute(self, terminal_size):
         command = [
             'kubectl',
-            '--namespace', self.namespace,
+            '--namespace', self.user_pod.pod.metadata.namespace,
             'exec',
             '--stdin',
             '--tty',
-            pod.metadata.name,
+            self.user_pod.pod.metadata.name,
             '--'
         ] + self.command
 
         # FIXME: Is this async friendly?
         self.process = PtyProcess.spawn(argv=command, dimensions=terminal_size)
-        yield ShellState.RUNNING

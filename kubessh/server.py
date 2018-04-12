@@ -12,7 +12,7 @@ from traitlets import Unicode, Bool, Integer, default
 
 import asyncssh
 
-from kubessh.shell import Shell, ShellState
+from kubessh.shell import UserPod, Shell, ShellState
 
 shell_argparser = argparse.ArgumentParser()
 shell_argparser.add_argument(
@@ -89,7 +89,7 @@ class KubeSSH(Application):
         else:
             return 'default'
 
-    def make_shell(self, process):
+    async def handle_client(self, process):
         username = process.channel.get_extra_info('username')
 
         # Execute user's command if we are given it.
@@ -108,20 +108,20 @@ class KubeSSH(Application):
             command = shlex.split(raw_command)
             image = 'alpine:3.6'
 
-        return Shell(parent=self, username=username, namespace=self.default_namespace, image=image, command=command)
+        pod = UserPod(parent=self, username=username, namespace=self.default_namespace, image=image)
 
-    async def handle_client(self, process):
-        shell = self.make_shell(process)
-
-        term_size = process.get_terminal_size()
         spinner = itertools.cycle(['-', '/', '|', '\\'])
-        async for status in shell.execute((term_size[1], term_size[0])):
+
+        async for status in pod.ensure_running():
             if status == ShellState.RUNNING:
                 process.stdout.write('\r\033[K'.encode('ascii'))
             elif status == ShellState.STARTING:
                 process.stdout.write('\b'.encode('ascii'))
                 process.stdout.write(next(spinner).encode('ascii'))
 
+        shell = Shell(parent=self, user_pod=pod, command=command)
+        term_size = process.get_terminal_size()
+        await shell.execute((term_size[1], term_size[0]))
         proc = shell.process
 
         await process.redirect(proc, proc, proc)
