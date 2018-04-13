@@ -8,11 +8,13 @@ from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 import itertools
 from traitlets.config import Application
-from traitlets import Unicode, Bool, Integer, default
+from traitlets import Unicode, Bool, Integer, Type, default
 
 import asyncssh
 
 from kubessh.shell import UserPod, Shell, ShellState
+from kubessh.authentication import Authenticator
+from kubessh.authentication.dummy import DummyAuthenticatingServer
 
 shell_argparser = argparse.ArgumentParser()
 shell_argparser.add_argument(
@@ -28,13 +30,6 @@ shell_argparser.add_argument(
 
 
 
-
-class Server(asyncssh.SSHServer):
-    def password_auth_supported(self):
-        return True
-
-    def validate_password(self, username, password):
-        return username == password
 
 class KubeSSH(Application):
     config_file = Unicode(
@@ -70,6 +65,17 @@ class KubeSSH(Application):
         Turn on debug logging
         """,
         config=True
+    )
+
+    authenticator_class = Type(
+        DummyAuthenticatingServer,
+        klass=Authenticator,
+        config=True,
+        help="""
+        Class used to perform authentication.
+
+        Should be a subclass of kubessh.authentication.Authenticator.
+        """
     )
 
     default_namespace = Unicode(
@@ -176,7 +182,7 @@ class KubeSSH(Application):
         await asyncssh.create_server(
             host='',
             port=self.port,
-            server_factory=Server,
+            server_factory=partial(self.authenticator_class, parent=self),
             process_factory=self.handle_client,
             kex_algs=[alg.decode('ascii') for alg in asyncssh.kex.get_kex_algs()],
             server_host_keys=[self.ssh_host_key],
