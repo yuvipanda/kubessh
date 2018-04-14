@@ -14,7 +14,7 @@ import asyncssh
 
 from kubessh.shell import UserPod, Shell, ShellState
 from kubessh.authentication import Authenticator
-from kubessh.authentication.dummy import DummyAuthenticatingServer
+from kubessh.authentication.github import GitHubAuthenticator
 
 shell_argparser = argparse.ArgumentParser()
 shell_argparser.add_argument(
@@ -68,7 +68,7 @@ class KubeSSH(Application):
     )
 
     authenticator_class = Type(
-        DummyAuthenticatingServer,
+        GitHubAuthenticator,
         klass=Authenticator,
         config=True,
         help="""

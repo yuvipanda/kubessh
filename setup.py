@@ -13,6 +13,7 @@ setuptools.setup(
         'kubernetes==5.*',
         'asyncssh==1.12.*',
         'ptyprocess==0.5.*',
+        'aiohttp==3.1.*',
         'escapism'
     ],
     entry_points = {
