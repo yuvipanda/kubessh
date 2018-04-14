@@ -9,6 +9,7 @@ image:
 service:
   type: LoadBalancer
   port: 22
+  nodePort: 32222
 
 resources: {}
 

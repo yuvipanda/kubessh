@@ -14,6 +14,9 @@ spec:
       targetPort: ssh
       protocol: TCP
       name: ssh
+      {{ if eq .Values.service.type "NodePort" }}
+      nodePort: {{ .Values.service.nodePort }}
+      {{ end }}
   selector:
     app: {{ template "..name" . }}
     release: {{ .Release.Name }}
