@@ -14,6 +14,7 @@ setuptools.setup(
         'asyncssh==1.12.*',
         'ptyprocess==0.5.*',
         'aiohttp==3.1.*',
+        'traitlets==4.3.*',
         'escapism'
     ],
     entry_points = {
