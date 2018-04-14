@@ -12,7 +12,7 @@ charts:
         # Context to send to docker build for use by the Dockerfile
         contextPath: ..
         # Dockerfile path relative to chartpress.yaml
-        dockerfilePath: ../Dockerfile
+        dockerfilePath: images/kubessh/Dockerfile
         valuesPath: image
         # additional paths relevant to the image
         # in addition to image directory itself

@@ -1,0 +1,1 @@
+c.KubeSSH.host_key_path = '/etc/kubessh/secrets/kubessh.host-key'

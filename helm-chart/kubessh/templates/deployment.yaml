@@ -32,8 +32,6 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           command:
             - kubessh
-            - --host-key-path
-            - /etc/kubessh/secrets/kubessh.host-key
           volumeMounts:
             - name: secrets
               mountPath: /etc/kubessh/secrets
