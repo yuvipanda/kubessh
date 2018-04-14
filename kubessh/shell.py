@@ -46,6 +46,7 @@ class UserPod(LoggingConfigurable):
             "kind": "Pod",
             "metadata": {},
             "spec": {
+                "automountServiceAccountToken": False,
                 "containers": [{
                     "command": ["/bin/sh"],
                     "image": "alpine:3.6",
