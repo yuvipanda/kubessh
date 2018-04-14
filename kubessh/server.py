@@ -165,9 +165,19 @@ class KubeSSH(Application):
 
         process.exit(shell_completed.result())
 
+    def init_logging(self):
+        """
+        Fix logging so both asyncssh & traitlet logging works
+        """
+        asyncssh_logger = logging.getLogger('asyncssh')
+        asyncssh_logger.propogate = True
+        asyncssh_logger.parent = self.log
+        asyncssh_logger.setLevel(self.log.level)
+
     def initialize(self, *args, **kwargs):
-        logging.basicConfig(format='%(asctime)s %(message)s', level='DEBUG' if self.debug else 'INFO')
         self.load_config_file(self.config_file)
+        self.log.setLevel(logging.DEBUG if self.debug else logging.INFO)
+        self.init_logging()
 
         if self.host_key_path is None:
             # We'll generate a temporary key in-memory key for this run only
