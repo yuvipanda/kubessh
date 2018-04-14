@@ -2,4 +2,4 @@ apiVersion: v1
 appVersion: '0.1'
 description: Spawn Kubernetes pods for SSH users
 name: kubessh
-version: 0.1.0-0d7d102
+version: 0.1.0-01863eb
