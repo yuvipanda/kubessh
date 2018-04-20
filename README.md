@@ -1,6 +1,9 @@
 # KubeSSH
 
-Provide shells in Kubernetes Pods to your users via SSH.
+> I have some code that requires more RAM / CPU / GPUs / Network / Time to run than my laptop can offer.
+> What is the simplest, most user friendly way to run this code?
+
+KubeSSH is an experiment in trying to answer this question.
 
 ## What?
 
@@ -8,6 +11,8 @@ Normally, you use `ssh` to get a shell on a particular single machine to do work
 You might be editing files, reading logs, submitting jobs or running some code.
 
 With KubeSSH, each user sshing in gets their own isolated [Kubernetes Pod](https://kubernetes.io/docs/concepts/workloads/pods/pod/).
+This pod can be customized to provide CPU / RAM / GPUs / disk as the user / cluster admin
+sees fit. Users can then run their code *interactively* using all these resources.
 
 ## Why?
 
