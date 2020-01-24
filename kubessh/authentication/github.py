@@ -2,11 +2,22 @@ from kubessh.authentication import Authenticator
 import async_timeout
 import aiohttp
 import asyncssh
+from traitlets import List
 
 class GitHubAuthenticator(Authenticator):
     """
     Authenticate with GitHub SSH keys
     """
+    allowed_users = List(
+        [],
+        config=True,
+        help="""
+        List of GitHub users allowed to log in.
+
+        By default, no users are allowed
+        """
+    )
+
     def connection_made(self, conn):
         self.conn = conn
 
@@ -17,6 +28,9 @@ class GitHubAuthenticator(Authenticator):
         """
         Fetch and save user's keys for comparison later
         """
+        if username not in self.allowed_users:
+            # Deny all users not explicitly allowed
+            return True
         url = f'https://github.com/{username}.keys'
         async with aiohttp.ClientSession() as session, async_timeout.timeout(1):
             async with session.get(url) as response:
