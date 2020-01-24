@@ -101,7 +101,7 @@ class KubeSSH(Application):
         # Execute user's command if we are given it.
         # Otherwise spawn /bin/bash
         # FIXME: Make shell configurable
-        raw_command = process.get_command()
+        raw_command = process.command
         if raw_command is None:
             raw_command = ''
         try:
@@ -196,7 +196,7 @@ class KubeSSH(Application):
             process_factory=self.handle_client,
             kex_algs=[alg.decode('ascii') for alg in asyncssh.kex.get_kex_algs()],
             server_host_keys=[self.ssh_host_key],
-            session_encoding=None
+            encoding=None
         )
 
 app = KubeSSH()
