@@ -16,9 +16,9 @@ from traitlets import Dict, Unicode, List
 from .serialization import make_pod_from_dict
 
 try:
-    kubernetes.config.load_kube_config()
-except FileNotFoundError:
     kubernetes.config.load_incluster_config()
+except kubernetes.config.ConfigException:
+    kubernetes.config.load_kube_config()
 
 # FIXME: Figure out if making this global is a problem
 v1 = k.CoreV1Api()
