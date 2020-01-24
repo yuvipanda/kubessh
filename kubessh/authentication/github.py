@@ -30,6 +30,7 @@ class GitHubAuthenticator(Authenticator):
         """
         if username not in self.allowed_users:
             # Deny all users not explicitly allowed
+            self.log.info(f"User {username} not in allowed_users, authentication denied")
             return True
         url = f'https://github.com/{username}.keys'
         async with aiohttp.ClientSession() as session, async_timeout.timeout(1):

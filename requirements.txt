@@ -3,3 +3,4 @@ asyncssh
 ptyprocess
 escapism
 traitlets
+ruamel.yaml

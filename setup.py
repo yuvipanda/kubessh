@@ -15,7 +15,8 @@ setuptools.setup(
         'ptyprocess',
         'aiohttp',
         'traitlets',
-        'escapism'
+        'escapism',
+        'ruamel.yaml'
     ],
     entry_points = {
         'console_scripts': [
