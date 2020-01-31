@@ -9,3 +9,6 @@ with open('/etc/kubessh/config/values.yaml') as f:
 
 if config['auth']['type'] == 'github':
     c.GitHubAuthenticator.allowed_users = config['auth']['github']['allowedUsers']
+
+if 'podTemplate' in config:
+    c.UserPod.pod_template = config['podTemplate']
