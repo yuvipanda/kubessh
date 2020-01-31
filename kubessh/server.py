@@ -159,14 +159,15 @@ class KubeSSH(Application):
             self.log.info(f'Loaded host key from {self.host_key_path}')
 
     async def start(self):
-        await asyncssh.create_server(
+        await asyncssh.listen(
             host='',
             port=self.port,
             server_factory=partial(self.authenticator_class, parent=self),
             process_factory=self.handle_client,
             kex_algs=[alg.decode('ascii') for alg in asyncssh.kex.get_kex_algs()],
             server_host_keys=[self.ssh_host_key],
-            encoding=None
+            encoding=None,
+            keepalive_interval=30 # FIXME: Make this configurable
         )
 
 app = KubeSSH()
