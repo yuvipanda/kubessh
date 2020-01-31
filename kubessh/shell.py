@@ -193,13 +193,17 @@ class UserPod(LoggingConfigurable):
 
 class Shell(LoggingConfigurable):
     command = List(
-        ['/bin/sh'],
+        ['/bin/bash', "--login"],
         help="""
         Command to run when shell is spawned.
 
         The pod will always run `/bin/sh` as its primary command.
         This command is used instead when we `kubectl exec` into the
         pod to start a shell.
+
+        We default to a login bash shell, which most people expect.
+        This will not work if you are using an image without bash -
+        such as alpine. In that case, you need to use "/bin/sh"
         """,
         config=True
     )
