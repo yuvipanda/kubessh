@@ -9,6 +9,7 @@ import kubernetes.config
 import escapism
 import functools
 from enum import Enum
+import string
 from concurrent.futures import ThreadPoolExecutor
 from traitlets.config import LoggingConfigurable
 from traitlets import Dict, Unicode, List
@@ -88,6 +89,27 @@ class UserPod(LoggingConfigurable):
         config=True
     )
 
+    def _expand_user_properties(self, template):
+        # Make sure username and servername match the restrictions for DNS labels
+        # Note: '-' is not in safe_chars, as it is being used as escape character
+        safe_chars = set(string.ascii_lowercase + string.digits)
+
+        safe_username = escapism.escape(self.username, safe=safe_chars, escape_char='-').lower()
+
+        return template.format(
+            username=safe_username,
+        )
+
+    def _expand_all(self, src):
+        if isinstance(src, list):
+            return [self._expand_all(i) for i in src]
+        elif isinstance(src, dict):
+            return {k: self._expand_all(v) for k, v in src.items()}
+        elif isinstance(src, str):
+            return self._expand_user_properties(src)
+        else:
+            return src
+
     def __init__(self, username, namespace, *args, **kwargs):
         self.username = username
         self.namespace = namespace
@@ -112,7 +134,7 @@ class UserPod(LoggingConfigurable):
         return ','.join([f'{k}={v}' for k, v in labels.items()])
 
     def make_pod_spec(self):
-        pod = make_pod_from_dict(self.pod_template)
+        pod = make_pod_from_dict(self._expand_all(self.pod_template))
         pod.metadata.generate_name = escapism.escape(self.username, escape_char='-') + '-'
 
         if pod.metadata.labels is None:
