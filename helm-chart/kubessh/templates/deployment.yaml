@@ -18,6 +18,9 @@ spec:
       labels:
         app: {{ template "..name" . }}
         release: {{ .Release.Name }}
+      annotations:
+        checksum/config-map: {{ include (print .Template.BasePath "/configmap.yaml") . | sha256sum }}
+        checksum/secret: {{ include (print .Template.BasePath "/secret.yaml") . | sha256sum }}
     spec:
       {{ if .Values.rbac.enabled }}
       serviceAccountName: {{ template "..fullname" . }}
@@ -26,6 +29,9 @@ spec:
         - name: secrets
           secret:
             secretName: {{ template "..fullname" . }}
+        - name: config
+          configMap:
+            name: {{ template "..fullname" . }}
       containers:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
@@ -35,6 +41,9 @@ spec:
           volumeMounts:
             - name: secrets
               mountPath: /etc/kubessh/secrets
+              readOnly: true
+            - name: config
+              mountPath: /etc/kubessh/config
               readOnly: true
           ports:
             - name: ssh

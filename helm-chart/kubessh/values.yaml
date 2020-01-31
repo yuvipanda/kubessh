@@ -21,3 +21,8 @@ affinity: {}
 
 rbac:
   enabled: true
+
+auth:
+  type: github
+  github:
+    allowedUsers: []
