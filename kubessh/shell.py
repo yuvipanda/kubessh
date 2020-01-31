@@ -151,10 +151,10 @@ class UserPod(LoggingConfigurable):
         """
         remaining_pods = []
         for pod in pods.items:
-            if pod.status.phase == 'Failed' or pod.status.phase == 'Succeeded':
+            if pod.status.phase in ['Failed', 'Succeeded']:
                 await self._run_in_executor(
                     v1.delete_namespaced_pod,
-                    pod.metadata.name, pod.metadata.namespace, k.V1DeleteOptions(grace_period_seconds=0)
+                    pod.metadata.name, pod.metadata.namespace, body=k.V1DeleteOptions(grace_period_seconds=0)
                 )
             else:
                 remaining_pods.append(pod)
