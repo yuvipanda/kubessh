@@ -16,20 +16,6 @@ from kubessh.shell import UserPod, Shell, ShellState
 from kubessh.authentication import Authenticator
 from kubessh.authentication.github import GitHubAuthenticator
 
-shell_argparser = argparse.ArgumentParser()
-shell_argparser.add_argument(
-    '--image',
-    default='alpine:3.6',
-    help='Image to launch for this shell'
-)
-shell_argparser.add_argument(
-    'command',
-    nargs='*',
-    default=['/bin/sh']
-)
-
-
-
 
 class KubeSSH(Application):
     config_file = Unicode(
@@ -98,23 +84,7 @@ class KubeSSH(Application):
     async def handle_client(self, process):
         username = process.channel.get_extra_info('username')
 
-        # Execute user's command if we are given it.
-        # Otherwise spawn /bin/bash
-        # FIXME: Make shell configurable
-        raw_command = process.command
-        if raw_command is None:
-            raw_command = ''
-        try:
-            shell_args = shell_argparser.parse_args(shlex.split(raw_command))
-            command = shell_args.command
-            image = shell_args.image
-        except SystemExit:
-            # This just means there's an argument parser error
-            # We should then treat this as purely a command
-            command = shlex.split(raw_command)
-            image = 'alpine:3.6'
-
-        pod = UserPod(parent=self, username=username, namespace=self.default_namespace, image=image)
+        pod = UserPod(parent=self, username=username, namespace=self.default_namespace)
 
         spinner = itertools.cycle(['-', '/', '|', '\\'])
 
@@ -125,7 +95,7 @@ class KubeSSH(Application):
                 process.stdout.write('\b'.encode('ascii'))
                 process.stdout.write(next(spinner).encode('ascii'))
 
-        shell = Shell(parent=self, user_pod=pod, command=command)
+        shell = Shell(parent=self, user_pod=pod)
         term_size = process.get_terminal_size()
         await shell.execute((term_size[1], term_size[0]))
         proc = shell.process

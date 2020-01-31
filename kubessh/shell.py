@@ -88,17 +88,6 @@ class UserPod(LoggingConfigurable):
         config=True
     )
 
-    image = Unicode(
-        None,
-        allow_none=True,
-        help="""
-        Primary docker image this shell will be spawned in.
-
-        When set to None, the image in `pod_template` is preserved
-        """,
-        config=True
-    )
-
     def __init__(self, username, namespace, *args, **kwargs):
         self.username = username
         self.namespace = namespace
@@ -106,7 +95,6 @@ class UserPod(LoggingConfigurable):
 
         self.required_labels = {
             'kubessh.yuvi.in/username': escapism.escape(self.username, escape_char='-'),
-            'kubessh.yuvi.in/image': escapism.escape(self.image, escape_char='-')
         }
 
         # Threads required to perform all activities in this shell
@@ -131,8 +119,6 @@ class UserPod(LoggingConfigurable):
             pod.metadata.labels = {}
         pod.metadata.labels.update(self.required_labels)
 
-        if self.image:
-            pod.spec.containers[0].image = self.image
         return pod
 
     async def cleanup_pods(self, pods):
