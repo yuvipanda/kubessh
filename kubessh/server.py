@@ -167,6 +167,7 @@ class KubeSSH(Application):
             kex_algs=[alg.decode('ascii') for alg in asyncssh.kex.get_kex_algs()],
             server_host_keys=[self.ssh_host_key],
             encoding=None,
+            agent_forwarding=False, # The cause of so much pain! Let's not allow this by default
             keepalive_interval=30 # FIXME: Make this configurable
         )
 
