@@ -33,7 +33,14 @@ spec:
           configMap:
             name: {{ template "..fullname" . }}
       containers:
-        - name: {{ .Chart.Name }}
+        - name: cleanup
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - python3
+            - -m
+            - kubessh.cleanup
+        - name: server
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           command:
