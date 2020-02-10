@@ -36,4 +36,6 @@ jobs:
         run: |
           source venv/bin/activate
           cd helm-chart
+          git config --global user.email yuvipanda+chartpress@gmail.com
+          git config --global user.name chartpress
           chartpress --push --publish-chart
