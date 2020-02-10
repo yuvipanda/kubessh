@@ -17,6 +17,10 @@ jobs:
           python3 -m venv venv
           source venv/bin/activate
           pip install --no-cache-dir -r dev-requirements.txt
+      - uses: azure/setup-helm@v1
+        with:
+          version: '3.0'
+        id: install
       - uses: azure/docker-login@v1
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
