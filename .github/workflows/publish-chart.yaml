@@ -19,7 +19,7 @@ jobs:
           pip install --no-cache-dir -r dev-requirements.txt
       - uses: azure/setup-helm@v1
         with:
-          version: '3.0.3'
+          version: 'latest'
         id: install
       - uses: azure/docker-login@v1
         with:
