@@ -2,8 +2,8 @@ charts:
   - name: kubessh
     imagePrefix: yuvipanda/kubessh-
     repo:
-      git: yuvipanda/helm-charts
-      published: https://yuvipanda.github.io/helm-charts
+      git: yuvipanda/kubessh
+      published: https://yuvipanda.github.io/kubessh/
     paths:
       - ../setup.py
       - ../kubessh

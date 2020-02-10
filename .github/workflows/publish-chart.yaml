@@ -1,0 +1,23 @@
+name: Publish chart
+on: [push]
+
+jobs:
+  build:
+    name: Publish Helm Chart
+    # This job runs on Linux
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup Python
+        uses: actions/setup-python@v1
+        with:
+          python-version: '3.x'
+      - name: install dependencies
+        run: |
+          python3 -m venv venv
+          source venv/bin/activate
+          pip install --no-cache-dir -r dev-requirements.txt
+      - name: Publish chart
+        run: |
+          source venv/bin/activate
+          chartpress --push --publish-chart
