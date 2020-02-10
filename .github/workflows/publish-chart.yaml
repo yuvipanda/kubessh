@@ -27,6 +27,7 @@ jobs:
         run: |
           mkdir -p ~/.ssh
           echo "${CHARTPRESS_SSH_KEY}" > ~/.ssh/id_rsa
+          chmod 0500 ~/.ssh/id_rsa
       - name: Publish chart
         run: |
           source venv/bin/activate
