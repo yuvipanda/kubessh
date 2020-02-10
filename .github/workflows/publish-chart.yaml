@@ -17,7 +17,12 @@ jobs:
           python3 -m venv venv
           source venv/bin/activate
           pip install --no-cache-dir -r dev-requirements.txt
+      - name: Setup Deploy SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${CHARTPRESS_SSH_KEY}" > ~/.ssh/id_rsa
       - name: Publish chart
         run: |
           source venv/bin/activate
+          cd helm-chart
           chartpress --push --publish-chart
