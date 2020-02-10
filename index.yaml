@@ -1,0 +1,13 @@
+apiVersion: v1
+entries:
+  kubessh:
+  - apiVersion: v1
+    appVersion: "0.1"
+    created: 2020-02-10T14:54:42.625941+05:30
+    description: Spawn Kubernetes pods for SSH users
+    digest: 9d95d3b0dbc5e2803f53c509a019ceef7e7ad6654aab54bb856efdbe97f79fc8
+    name: kubessh
+    urls:
+    - https://yuvipanda.github.io/kubessh/kubessh-0.0.1-n057.h6b574aa.tgz
+    version: 0.0.1-n057.h6b574aa
+generated: 2020-02-10T14:54:42.62553+05:30
