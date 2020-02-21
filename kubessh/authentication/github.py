@@ -33,10 +33,10 @@ class GitHubAuthenticator(Authenticator):
             self.log.info(f"User {username} not in allowed_users, authentication denied")
             return True
         url = f'https://github.com/{username}.keys'
-        async with aiohttp.ClientSession() as session, async_timeout.timeout(1):
+        async with aiohttp.ClientSession() as session, async_timeout.timeout(5):
             async with session.get(url) as response:
                 keys = await response.text()
-                if keys:
-                    self.conn.set_authorized_keys(asyncssh.import_authorized_keys(keys))
+        if keys:
+            self.conn.set_authorized_keys(asyncssh.import_authorized_keys(keys))
         # Return true to indicate we always *must* authenticate
         return True
