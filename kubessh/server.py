@@ -12,7 +12,7 @@ from traitlets import Unicode, Bool, Integer, Type, default
 
 import asyncssh
 
-from kubessh.shell import UserPod, Shell, ShellState
+from kubessh.shell import UserPod, ShellState
 from kubessh.authentication import Authenticator
 from kubessh.authentication.github import GitHubAuthenticator
 
@@ -95,45 +95,7 @@ class KubeSSH(Application):
                 process.stdout.write('\b'.encode('ascii'))
                 process.stdout.write(next(spinner).encode('ascii'))
 
-        shell = Shell(parent=self, user_pod=pod)
-        term_size = process.get_terminal_size()
-        await shell.execute((term_size[1], term_size[0]))
-        proc = shell.process
-
-        await process.redirect(proc, proc, proc)
-
-        loop = asyncio.get_event_loop()
-
-        # Future for spawned process dying
-        # We explicitly create a threadpool of 1 threads for every run_in_executor call
-        # to help reason about interaction between asyncio and threads. A global threadpool
-        # is fine when using it as a queue (when doing HTTP requests, for example), but not
-        # here since we could end up deadlocking easily.
-        shell_completed = loop.run_in_executor(ThreadPoolExecutor(1), proc.wait)
-        # Future for ssh connection closing
-        read_stdin = asyncio.ensure_future(process.stdin.read())
-
-        # This loops is here to pass TerminalSizeChanged events through to ptyprocess
-        # It needs to break when the ssh connection is gone or when the spawned process is gone.
-        # See https://github.com/ronf/asyncssh/issues/134 for info on how this works
-        while not process.stdin.at_eof() and not shell_completed.done():
-            try:
-                if read_stdin.done():
-                    read_stdin = asyncio.ensure_future(process.stdin.read())
-                done, _ = await asyncio.wait([read_stdin, shell_completed], return_when=asyncio.FIRST_COMPLETED)
-                # asyncio.wait doesn't await the futures - it only waits for them to complete.
-                # We need to explicitly await them to retreive any exceptions from them
-                for future in done:
-                    await future
-            except asyncssh.misc.TerminalSizeChanged as exc:
-                proc.setwinsize(exc.height, exc.width)
-
-        # SSH Client is gone, but process is still alive. Let's kill it!
-        if process.stdin.at_eof() and not shell_completed.done():
-            await loop.run_in_executor(ThreadPoolExecutor(1), proc.terminate, force=True)
-            logging.info('Terminated process')
-
-        process.exit(shell_completed.result())
+        await pod.execute(process)
 
     def init_logging(self):
         """

@@ -9,6 +9,7 @@ import kubernetes.config
 import escapism
 import functools
 from enum import Enum
+import shlex
 import string
 from concurrent.futures import ThreadPoolExecutor
 from traitlets.config import LoggingConfigurable
@@ -191,37 +192,64 @@ class UserPod(LoggingConfigurable):
         yield ShellState.RUNNING
         self.pod = pod
 
-class Shell(LoggingConfigurable):
-    command = List(
-        ['/bin/bash', "--login"],
-        help="""
-        Command to run when shell is spawned.
-
-        The pod will always run `/bin/sh` as its primary command.
-        This command is used instead when we `kubectl exec` into the
-        pod to start a shell.
-
-        We default to a login bash shell, which most people expect.
-        This will not work if you are using an image without bash -
-        such as alpine. In that case, you need to use "/bin/sh"
-        """,
-        config=True
-    )
-
-    def __init__(self, user_pod, *args, **kwargs):
-        self.user_pod = user_pod
-        super().__init__(*args, **kwargs)
-
-    async def execute(self, terminal_size):
-        command = [
+    async def execute(self, ssh_process):
+        command = shlex.split(ssh_process.command) if ssh_process.command else ["/bin/bash", "-l"]
+        tty_args = ['--tty'] if ssh_process.get_terminal_type() else []
+        kubectl_command = [
             'kubectl',
-            '--namespace', self.user_pod.pod.metadata.namespace,
+            '--namespace', self.pod.metadata.namespace,
             'exec',
-            '--stdin',
-            '--tty',
-            self.user_pod.pod.metadata.name,
+            '--stdin'
+            ] + tty_args + [
+            self.pod.metadata.name,
             '--'
-        ] + self.command
+        ] + command
+        print(f'Executing {kubectl_command}')
 
         # FIXME: Is this async friendly?
-        self.process = PtyProcess.spawn(argv=command, dimensions=terminal_size)
+        if ssh_process.get_terminal_type():
+            # PtyProcess and asyncssh disagree on ordering of terminal size
+            ts = ssh_process.get_terminal_size()
+            process = PtyProcess.spawn(argv=kubectl_command, dimensions=(ts[1], ts[0]))
+            await ssh_process.redirect(process, process, process)
+
+            loop = asyncio.get_event_loop()
+
+            # Future for spawned process dying
+            # We explicitly create a threadpool of 1 threads for every run_in_executor call
+            # to help reason about interaction between asyncio and threads. A global threadpool
+            # is fine when using it as a queue (when doing HTTP requests, for example), but not
+            # here since we could end up deadlocking easily.
+            shell_completed = loop.run_in_executor(ThreadPoolExecutor(1), process.wait)
+            # Future for ssh connection closing
+            read_stdin = asyncio.ensure_future(ssh_process.stdin.read())
+
+            # This loops is here to pass TerminalSizeChanged events through to ptyprocess
+            # It needs to break when the ssh connection is gone or when the spawned process is gone.
+            # See https://github.com/ronf/asyncssh/issues/134 for info on how this works
+            while not ssh_process.stdin.at_eof() and not shell_completed.done():
+                try:
+                    if read_stdin.done():
+                        read_stdin = asyncio.ensure_future(process.stdin.read())
+                    done, _ = await asyncio.wait([read_stdin, shell_completed], return_when=asyncio.FIRST_COMPLETED)
+                    # asyncio.wait doesn't await the futures - it only waits for them to complete.
+                    # We need to explicitly await them to retreive any exceptions from them
+                    for future in done:
+                        await future
+                except asyncssh.misc.TerminalSizeChanged as exc:
+                    proc.setwinsize(exc.height, exc.width)
+
+            # SSH Client is gone, but process is still alive. Let's kill it!
+            if ssh_process.stdin.at_eof() and not shell_completed.done():
+                await loop.run_in_executor(ThreadPoolExecutor(1), lambda: proc.terminate(force=True))
+                logging.info('Terminated process')
+
+            ssh_process.exit(shell_completed.result())
+        else:
+            process = await asyncio.create_subprocess_exec(
+                *kubectl_command,
+                stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+            )
+            await ssh_process.redirect(stdin=process.stdin, stdout=process.stdout, stderr=process.stderr)
+
+            ssh_process.exit(await process.wait())
