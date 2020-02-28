@@ -16,7 +16,8 @@ setuptools.setup(
         'aiohttp',
         'traitlets',
         'escapism',
-        'ruamel.yaml'
+        'ruamel.yaml',
+        'simpervisor'
     ],
     entry_points = {
         'console_scripts': [
