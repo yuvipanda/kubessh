@@ -56,13 +56,6 @@ class UserPod(LoggingConfigurable):
                         "name": "shell",
                         "stdin": True,
                         "tty": True,
-                    },
-                    {
-                        "command": ["/bin/sh"],
-                        "image": "alpine/socat",
-                        "name": "socat",
-                        "stdin": True,
-                        "tty": True
                     }
                 ],
             },
