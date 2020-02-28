@@ -49,13 +49,22 @@ class UserPod(LoggingConfigurable):
             "metadata": {},
             "spec": {
                 "automountServiceAccountToken": False,
-                "containers": [{
-                    "command": ["/bin/sh"],
-                    "image": "alpine:3.6",
-                    "name": "shell",
-                    "stdin": True,
-                    "tty": True,
-                }],
+                "containers": [
+                    {
+                        "command": ["/bin/sh"],
+                        "image": "buildpack-deps:bionic-scm",
+                        "name": "shell",
+                        "stdin": True,
+                        "tty": True,
+                    },
+                    {
+                        "command": ["/bin/sh"],
+                        "image": "alpine/socat",
+                        "name": "socat",
+                        "stdin": True,
+                        "tty": True
+                    }
+                ],
             },
         },
         help="""
@@ -199,6 +208,7 @@ class UserPod(LoggingConfigurable):
             'kubectl',
             '--namespace', self.pod.metadata.namespace,
             'exec',
+            '-c', 'shell',
             '--stdin'
             ] + tty_args + [
             self.pod.metadata.name,
