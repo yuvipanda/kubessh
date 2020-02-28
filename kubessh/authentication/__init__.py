@@ -4,6 +4,7 @@ import subprocess
 from traitlets.config import LoggingConfigurable
 from simpervisor import SupervisedProcess
 import socket
+from kubessh.shell import UserPod, ShellState
 
 def random_port():
     sock = socket.socket()
@@ -14,6 +15,9 @@ def random_port():
 
 # FIXME: Split this into two classes, at least.
 class BaseServer(asyncssh.SSHServer, LoggingConfigurable):
+    def connection_made(self, conn):
+        self.conn = conn
+
     def connection_requested(self, dest_host, dest_port, orig_host, orig_port):
         # Only allow localhost connections
         if dest_host != '127.0.0.1':
@@ -21,12 +25,15 @@ class BaseServer(asyncssh.SSHServer, LoggingConfigurable):
                 asyncssh.OPEN_ADMINISTRATIVELY_PROHIBITED,
                 "Only localhost connections allowed"
             )
-        print(f'{dest_host} {dest_port} {orig_host} {orig_port}')
+
+        username = self.conn.get_extra_info('username')
+        # FIXME: namespace
+        user_pod = UserPod(username, 'default')
         port = random_port()
         command = [
             'kubectl',
             'port-forward',
-            'pod/yuvipanda-d76j5',
+            user_pod.pod_name,
             f'{port}:{dest_port}'
         ]
         print(' '.join(command))
@@ -46,10 +53,18 @@ class BaseServer(asyncssh.SSHServer, LoggingConfigurable):
             ready_func=_socket_ready
         )
         async def transfer_data(reader, writer):
-            # Make sure the kubectl port-forward process is running
+            # Make sure our pod is running
+            async for status in user_pod.ensure_running():
+                if status == ShellState.RUNNING:
+                    break
+            # Make sure our kubectl port-forward is running
             await proc.start()
             await proc.ready()
+
+            # Connect to the local end of the kubectl port-forward
             (upstream_reader, upstream_writer) = await asyncio.open_connection('127.0.0.1', port)
+
+            # FIXME: This should be as fully bidirectional as possible, with minimal buffering / timeouts
             while not reader.at_eof():
                 try:
                     data = await asyncio.wait_for(reader.read(8092), timeout=0.1)
