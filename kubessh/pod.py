@@ -52,7 +52,7 @@ class UserPod(LoggingConfigurable):
                 "containers": [
                     {
                         "command": ["/bin/sh"],
-                        "image": "buildpack-deps:bionic-scm",
+                        "image": "jupyter/base-notebook",
                         "name": "shell",
                         "stdin": True,
                         "tty": True,
