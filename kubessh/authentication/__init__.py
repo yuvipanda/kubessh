@@ -4,7 +4,7 @@ import subprocess
 from traitlets.config import LoggingConfigurable
 from simpervisor import SupervisedProcess
 import socket
-from kubessh.shell import UserPod, ShellState
+from kubessh.pod import UserPod, PodState
 
 def random_port():
     sock = socket.socket()
@@ -55,7 +55,7 @@ class BaseServer(asyncssh.SSHServer, LoggingConfigurable):
         async def transfer_data(reader, writer):
             # Make sure our pod is running
             async for status in user_pod.ensure_running():
-                if status == ShellState.RUNNING:
+                if status == PodState.RUNNING:
                     break
             # Make sure our kubectl port-forward is running
             await proc.start()

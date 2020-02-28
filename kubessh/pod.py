@@ -25,7 +25,7 @@ except kubernetes.config.ConfigException:
 # FIXME: Figure out if making this global is a problem
 v1 = k.CoreV1Api()
 
-class ShellState(Enum):
+class PodState(Enum):
     UNKNOWN = 0
     STARTING = 1
     RUNNING = 2
@@ -183,7 +183,7 @@ class UserPod(LoggingConfigurable):
         if pod and pod.status.phase == 'Running':
             # Pod exists, and is running. Nothing to do
             self.pod = pod
-            yield ShellState.RUNNING
+            yield PodState.RUNNING
             return
 
         # FIXME: Deal with pods in Terminating state
@@ -199,7 +199,7 @@ class UserPod(LoggingConfigurable):
 
         if not pod:
             # There is no pod, so start one!
-            yield ShellState.STARTING
+            yield PodState.STARTING
             pod = await self._run_in_executor(
                 v1.create_namespaced_pod,
                 self.namespace, self.make_pod_spec()
@@ -208,13 +208,13 @@ class UserPod(LoggingConfigurable):
         while pod.status.phase != 'Running':
             # By now, a pod exists but is not necessarily in 'Running' state
             # So we just wait for that to be the case, and return
-            yield ShellState.STARTING
+            yield PodState.STARTING
             await asyncio.sleep(1)
             pod = await self._run_in_executor(
                 v1.read_namespaced_pod,
                 pod.metadata.name, pod.metadata.namespace
             )
-        yield ShellState.RUNNING
+        yield PodState.RUNNING
 
     async def execute(self, ssh_process):
         command = shlex.split(ssh_process.command) if ssh_process.command else ["/bin/bash", "-l"]

@@ -12,7 +12,7 @@ from traitlets import Unicode, Bool, Integer, Type, default
 
 import asyncssh
 
-from kubessh.shell import UserPod, ShellState
+from kubessh.pod import UserPod, PodState
 from kubessh.authentication import Authenticator
 from kubessh.authentication.github import GitHubAuthenticator
 
@@ -89,9 +89,9 @@ class KubeSSH(Application):
         spinner = itertools.cycle(['-', '/', '|', '\\'])
 
         async for status in pod.ensure_running():
-            if status == ShellState.RUNNING:
+            if status == PodState.RUNNING:
                 process.stdout.write('\r\033[K'.encode('ascii'))
-            elif status == ShellState.STARTING:
+            elif status == PodState.STARTING:
                 process.stdout.write('\b'.encode('ascii'))
                 process.stdout.write(next(spinner).encode('ascii'))
 
