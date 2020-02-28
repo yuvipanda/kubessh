@@ -21,7 +21,7 @@ setuptools.setup(
     ],
     entry_points = {
         'console_scripts': [
-            'kubessh=kubessh.server:main'
+            'kubessh=kubessh.app:main'
         ]
     }
 )

@@ -13,7 +13,7 @@ import shlex
 import string
 from concurrent.futures import ThreadPoolExecutor
 from traitlets.config import LoggingConfigurable
-from traitlets import Dict, Unicode, List
+from traitlets import Dict, Unicode, List, default
 
 from .serialization import make_pod_from_dict
 
@@ -81,6 +81,20 @@ class UserPod(LoggingConfigurable):
         config=True
     )
 
+    pod_name = Unicode(
+        None,
+        allow_none=True,
+        help="""
+        Name of this particular pod.
+
+        Auto-generated to be 'ssh-{username}' if not set.
+        """,
+    )
+
+    @default('pod_name')
+    def _pod_name_default(self):
+        return self._expand_all("ssh-{username}")
+
     namespace = Unicode(
         None,
         allow_none=True,
@@ -91,6 +105,7 @@ class UserPod(LoggingConfigurable):
         """,
         config=True
     )
+
 
     def _expand_user_properties(self, template):
         # Make sure username and servername match the restrictions for DNS labels
@@ -138,7 +153,7 @@ class UserPod(LoggingConfigurable):
 
     def make_pod_spec(self):
         pod = make_pod_from_dict(self._expand_all(self.pod_template))
-        pod.metadata.generate_name = escapism.escape(self.username, escape_char='-') + '-'
+        pod.metadata.name = self.pod_name
 
         if pod.metadata.labels is None:
             pod.metadata.labels = {}
@@ -146,45 +161,53 @@ class UserPod(LoggingConfigurable):
 
         return pod
 
-    async def cleanup_pods(self, pods):
-        """
-        Delete all Failed and Succeeded pods
-
-        Return list of pods that are not in Failed or Succeeded phases
-        """
-        remaining_pods = []
-        for pod in pods.items:
-            if pod.status.phase in ['Failed', 'Succeeded']:
-                await self._run_in_executor(
-                    v1.delete_namespaced_pod,
-                    pod.metadata.name, pod.metadata.namespace, body=k.V1DeleteOptions(grace_period_seconds=0)
-                )
-            else:
-                remaining_pods.append(pod)
-
-        return remaining_pods
-
     async def ensure_running(self):
-        # Get list of current running pods that might be for our user
-        all_user_pods = await self._run_in_executor(
-            v1.list_namespaced_pod,
-            self.namespace, label_selector=self._make_labelselector(self.required_labels)
-        )
+        """
+        Ensure this user pod is running.
 
-        current_user_pods = await self.cleanup_pods(all_user_pods)
+        1. If pod already exists, and is in running state, just return
+        2. If pod already exists, and has completed, delete it.
+        3. If pod doesn't exist, create new pod & wait for it to be running
+        """
+        try:
+            pod = await self._run_in_executor(
+                v1.read_namespaced_pod,
+                self.pod_name, self.namespace
+            )
+        except kubernetes.client.rest.ApiException as e:
+            if e.status == 404:
+                pod = None
+            else:
+                raise
 
-        if len(current_user_pods) == 0:
-            # No pods exist! Let's create some!
+        if pod and pod.status.phase == 'Running':
+            # Pod exists, and is running. Nothing to do
+            self.pod = pod
+            yield ShellState.RUNNING
+            return
+
+        # FIXME: Deal with pods in Terminating state
+        if pod and pod.status.phase in ['Failed', 'Succeeded']:
+            # Pod exists, but is in an unusable state.
+            # Delete it, and say there is no pod
+            await self._run_in_executor(
+                v1.delete_namespaced_pod,
+                pod.metadata.name,
+                pod.metadata.namespace, body=k.V1DeleteOptions(grace_period_seconds=0)
+            )
+            pod = None
+
+        if not pod:
+            # There is no pod, so start one!
             yield ShellState.STARTING
             pod = await self._run_in_executor(
                 v1.create_namespaced_pod,
                 self.namespace, self.make_pod_spec()
             )
-        else:
-            pod = current_user_pods[0]
-            # FIXME: What do we do if we have more than 1 running user pod?
 
         while pod.status.phase != 'Running':
+            # By now, a pod exists but is not necessarily in 'Running' state
+            # So we just wait for that to be the case, and return
             yield ShellState.STARTING
             await asyncio.sleep(1)
             pod = await self._run_in_executor(
@@ -192,22 +215,20 @@ class UserPod(LoggingConfigurable):
                 pod.metadata.name, pod.metadata.namespace
             )
         yield ShellState.RUNNING
-        self.pod = pod
 
     async def execute(self, ssh_process):
         command = shlex.split(ssh_process.command) if ssh_process.command else ["/bin/bash", "-l"]
         tty_args = ['--tty'] if ssh_process.get_terminal_type() else []
         kubectl_command = [
             'kubectl',
-            '--namespace', self.pod.metadata.namespace,
+            '--namespace', self.namespace,
             'exec',
             '-c', 'shell',
             '--stdin'
             ] + tty_args + [
-            self.pod.metadata.name,
+            self.pod_name,
             '--'
         ] + command
-        print(f'Executing {kubectl_command}')
 
         # FIXME: Is this async friendly?
         if ssh_process.get_terminal_type():
