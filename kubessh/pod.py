@@ -103,7 +103,6 @@ class UserPod(LoggingConfigurable):
 
         This namespace must already exist.
         """,
-        config=True
     )
 
 

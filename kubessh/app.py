@@ -124,7 +124,7 @@ class KubeSSH(Application):
         await asyncssh.listen(
             host='',
             port=self.port,
-            server_factory=partial(self.authenticator_class, parent=self),
+            server_factory=partial(self.authenticator_class, parent=self, namespace=self.default_namespace),
             process_factory=self.handle_client,
             kex_algs=[alg.decode('ascii') for alg in asyncssh.kex.get_kex_algs()],
             server_host_keys=[self.ssh_host_key],

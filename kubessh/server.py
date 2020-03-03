@@ -2,6 +2,7 @@ import asyncssh
 import asyncio
 import subprocess
 from traitlets.config import LoggingConfigurable
+from traitlets import Unicode
 from simpervisor import SupervisedProcess
 import socket
 from kubessh.pod import UserPod, PodState
@@ -25,6 +26,16 @@ class BaseServer(asyncssh.SSHServer, LoggingConfigurable):
     This class contains code that isn't related to authentication, but must
     be implemented at the SSHServer level.
     """
+    namespace = Unicode(
+        None,
+        allow_none=True,
+        help="""
+        Kubernetes Namespace where this server's pods will be spawned
+
+        This namespace must already exist.
+        """,
+    )
+
     def connection_made(self, conn):
         self.conn = conn
 
@@ -37,8 +48,7 @@ class BaseServer(asyncssh.SSHServer, LoggingConfigurable):
             )
 
         username = self.conn.get_extra_info('username')
-        # FIXME: namespace
-        user_pod = UserPod(username, 'default')
+        user_pod = UserPod(username, self.namespace)
         port = random_port()
         command = [
             'kubectl',
