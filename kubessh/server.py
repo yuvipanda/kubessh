@@ -36,8 +36,19 @@ class BaseServer(asyncssh.SSHServer, LoggingConfigurable):
         """,
     )
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.forwarding_processes = {}
+
     def connection_made(self, conn):
         self.conn = conn
+
+    def connection_lost(self, exception):
+        """
+        Terminate any running port-forward process when done
+        """
+        for proc in self.forwarding_processes.values():
+            asyncio.create_task(proc.terminate())
 
     def connection_requested(self, dest_host, dest_port, orig_host, orig_port):
         # Only allow localhost connections
@@ -49,30 +60,41 @@ class BaseServer(asyncssh.SSHServer, LoggingConfigurable):
 
         username = self.conn.get_extra_info('username')
         user_pod = UserPod(username, self.namespace)
-        port = random_port()
-        command = [
-            'kubectl',
-            'port-forward',
-            user_pod.pod_name,
-            f'{port}:{dest_port}'
-        ]
-        print(' '.join(command))
-        async def _socket_ready(proc):
-            try:
-                sock = socket.create_connection(('127.0.0.1', port))
-                sock.close()
-                return True
-            except:
-                # FIXME: Be more specific in errors we are catching?
-                return False
 
-        # FIXME: Reap this
-        # FIXME: cache one process per dest_port / dest_host pair per userpod
-        proc = SupervisedProcess(
-            'kubectl', *command,
-            always_restart=True,
-            ready_func=_socket_ready
-        )
+        cache_key = f'{user_pod.pod_name}:{dest_port}'
+
+
+        if cache_key in self.forwarding_processes:
+            proc = self.forwarding_processes[cache_key]
+
+            port = proc.port
+        else:
+            port = random_port()
+            command = [
+                'kubectl',
+                'port-forward',
+                user_pod.pod_name,
+                f'{port}:{dest_port}'
+            ]
+            # FIXME: Reap this
+            async def _socket_ready(proc):
+                try:
+                    sock = socket.create_connection(('127.0.0.1', port))
+                    sock.close()
+                    return True
+                except:
+                    # FIXME: Be more specific in errors we are catching?
+                    return False
+
+
+            proc = SupervisedProcess(
+                'kubectl', *command,
+                always_restart=True,
+                ready_func=_socket_ready
+            )
+            self.forwarding_processes[cache_key] = proc
+            proc.port = port
+
         async def transfer_data(reader, writer):
             # Make sure our pod is running
             async for status in user_pod.ensure_running():
