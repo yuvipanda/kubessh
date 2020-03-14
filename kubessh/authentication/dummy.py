@@ -1,6 +1,6 @@
 from kubessh.authentication import Authenticator
 
-class DummyAuthenticatingServer(Authenticator):
+class DummyAuthenticator(Authenticator):
     """
     Dummy SSH Authenticator.
 
