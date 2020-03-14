@@ -48,6 +48,8 @@ class BaseServer(asyncssh.SSHServer, LoggingConfigurable):
         Terminate any running port-forward process when done
         """
         for proc in self.forwarding_processes.values():
+            # FIXME: This isn't great, since it doesn't retrieve exceptions
+            # Maybe needs to be a thread?
             asyncio.create_task(proc.terminate())
 
     def connection_requested(self, dest_host, dest_port, orig_host, orig_port):
@@ -76,7 +78,6 @@ class BaseServer(asyncssh.SSHServer, LoggingConfigurable):
                 user_pod.pod_name,
                 f'{port}:{dest_port}'
             ]
-            # FIXME: Reap this
             async def _socket_ready(proc):
                 try:
                     sock = socket.create_connection(('127.0.0.1', port))
