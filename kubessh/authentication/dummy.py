@@ -10,4 +10,5 @@ class DummyAuthenticator(Authenticator):
         return True
 
     def validate_password(self, username, password):
+        self.log.info(f"Login attempted by {username}")
         return username == password

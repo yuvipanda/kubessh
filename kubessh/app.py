@@ -101,6 +101,9 @@ class KubeSSH(Application):
         """
         Fix logging so both asyncssh & traitlet logging works
         """
+        self.log.setLevel(logging.DEBUG if self.debug else logging.INFO)
+        self.log.propagate = True
+
         asyncssh_logger = logging.getLogger('asyncssh')
         asyncssh_logger.propogate = True
         asyncssh_logger.parent = self.log
@@ -108,7 +111,6 @@ class KubeSSH(Application):
 
     def initialize(self, *args, **kwargs):
         self.load_config_file(self.config_file)
-        self.log.setLevel(logging.DEBUG if self.debug else logging.INFO)
         self.init_logging()
 
         if self.host_key_path is None:
@@ -124,7 +126,8 @@ class KubeSSH(Application):
         await asyncssh.listen(
             host='',
             port=self.port,
-            server_factory=partial(self.authenticator_class, parent=self, namespace=self.default_namespace),
+            # Pass log through so we keep same logging infrastructure everywhere
+            server_factory=partial(self.authenticator_class, parent=self, namespace=self.default_namespace, log=self.log),
             process_factory=self.handle_client,
             kex_algs=[alg.decode('ascii') for alg in asyncssh.kex.get_kex_algs()],
             server_host_keys=[self.ssh_host_key],
