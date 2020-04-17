@@ -1,4 +1,7 @@
 from ruamel.yaml import YAML
+from kubessh.authentication.github import GitHubAuthenticator
+from kubessh.authentication.gitlab import GitLabAuthenticator
+from kubessh.authentication.dummy import DummyAuthenticator
 
 yaml = YAML()
 
@@ -9,7 +12,14 @@ with open('/etc/kubessh/config/values.yaml') as f:
     config = yaml.load(f)
 
 if config['auth']['type'] == 'github':
-    c.GitHubAuthenticator.allowed_users = config['auth']['github']['allowedUsers']
+    c.KubeSSH.authenticator_class = GitHubAuthenticator
+    c.KubeSSH.authenticator_class.allowed_users = config['auth']['github']['allowedUsers']
+elif config['auth']['type'] == 'gitlab':
+    c.KubeSSH.authenticator_class = GitLabAuthenticator
+    c.KubeSSH.authenticator_class.instance_url = config['auth']['gitlab']['instanceUrl']
+elif config['auth']['type'] == 'dummy':
+    c.KubeSSH.authenticator_class = DummyAuthenticator
+
 
 if 'podTemplate' in config:
     c.UserPod.pod_template = config['podTemplate']
