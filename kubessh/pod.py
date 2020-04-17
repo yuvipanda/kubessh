@@ -1,4 +1,5 @@
 import asyncio
+import asyncssh
 import subprocess
 from ptyprocess import PtyProcess
 import time
@@ -253,18 +254,18 @@ class UserPod(LoggingConfigurable):
             while not ssh_process.stdin.at_eof() and not shell_completed.done():
                 try:
                     if read_stdin.done():
-                        read_stdin = asyncio.ensure_future(process.stdin.read())
+                        read_stdin = asyncio.ensure_future(ssh_process.stdin.read())
                     done, _ = await asyncio.wait([read_stdin, shell_completed], return_when=asyncio.FIRST_COMPLETED)
                     # asyncio.wait doesn't await the futures - it only waits for them to complete.
                     # We need to explicitly await them to retreive any exceptions from them
                     for future in done:
                         await future
                 except asyncssh.misc.TerminalSizeChanged as exc:
-                    proc.setwinsize(exc.height, exc.width)
+                    process.setwinsize(exc.height, exc.width)
 
             # SSH Client is gone, but process is still alive. Let's kill it!
             if ssh_process.stdin.at_eof() and not shell_completed.done():
-                await loop.run_in_executor(ThreadPoolExecutor(1), lambda: proc.terminate(force=True))
+                await loop.run_in_executor(ThreadPoolExecutor(1), lambda: process.terminate(force=True))
                 logging.info('Terminated process')
 
             ssh_process.exit(shell_completed.result())
