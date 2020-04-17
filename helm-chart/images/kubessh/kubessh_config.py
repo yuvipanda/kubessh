@@ -17,6 +17,8 @@ if config['auth']['type'] == 'github':
 elif config['auth']['type'] == 'gitlab':
     c.KubeSSH.authenticator_class = GitLabAuthenticator
     c.KubeSSH.authenticator_class.instance_url = config['auth']['gitlab']['instanceUrl']
+    c.KubeSSH.authenticator_class.allowed_users = config['auth']['gitlab']['allowedUsers']
+
 elif config['auth']['type'] == 'dummy':
     c.KubeSSH.authenticator_class = DummyAuthenticator
 
