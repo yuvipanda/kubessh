@@ -227,16 +227,24 @@ class UserPod(LoggingConfigurable):
             yield PodState.STARTING
 
             # create persistent volumes, if any
-            if self.pvc_templates:
-                self.log.info("Create PVC")
-                pvc_results = await asyncio.gather(
-                    *(self._run_in_executor(
-                        v1.create_namespaced_persistent_volume_claim,
-                        self.namespace, self.make_pvc_spec(template))
-                      for template in self.pvc_templates), return_exceptions=True)
-
-            # TODO: check PVC creation results. ApiExceptions caused by
-            # already-present PVCs are fine, others are not
+            for template in self.pvc_templates:
+                pvc_spec = self.make_pvc_spec(template)
+                try:
+                    pvc = await self._run_in_executor(v1.create_namespaced_persistent_volume_claim, self.namespace, pvc_spec)
+                    self.log.info(f"Successfully created PVC {pvc.metadata.name}")
+                    self.log.debug(pvc)
+                except kubernetes.client.rest.ApiException as e:
+                    if e.status == 409:
+                        self.log.info(f"PVC {pvc_spec.metadata.name} already exists, did not create a new PVC.")
+                    elif e.status == 403:
+                        t, v, tb = sys.exc_info()
+                        try:
+                            pvc = await self._run_in_executor(v1.read_namespaced_persistent_volume_claim, pvc_spec['metadata']['name'], self.namespace, pvc_spec)
+                        except:
+                            raise v.with_traceback(tb)
+                        self.log.info(f"PVC {pvc_spec.metadata.name} already exists, possibly have reached quota.")
+                    else:
+                        raise
 
             pod = await self._run_in_executor(
                 v1.create_namespaced_pod,
