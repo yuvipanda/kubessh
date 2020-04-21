@@ -86,6 +86,7 @@ class KubeSSH(Application):
 
         pod = UserPod(parent=self, username=username, namespace=self.default_namespace)
 
+
         spinner = itertools.cycle(['-', '/', '|', '\\'])
 
         async for status in pod.ensure_running():
@@ -103,11 +104,13 @@ class KubeSSH(Application):
         """
         self.log.setLevel(logging.DEBUG if self.debug else logging.INFO)
         self.log.propagate = True
+        UserPod.log = self.log
 
         asyncssh_logger = logging.getLogger('asyncssh')
-        asyncssh_logger.propogate = True
+        asyncssh_logger.propagate = True
         asyncssh_logger.parent = self.log
         asyncssh_logger.setLevel(self.log.level)
+
 
     def initialize(self, *args, **kwargs):
         self.load_config_file(self.config_file)
