@@ -266,7 +266,7 @@ class UserPod(LoggingConfigurable):
             # SSH Client is gone, but process is still alive. Let's kill it!
             if ssh_process.stdin.at_eof() and not shell_completed.done():
                 await loop.run_in_executor(ThreadPoolExecutor(1), lambda: process.terminate(force=True))
-                logging.info('Terminated process')
+                self.log.info('Terminated process')
 
             ssh_process.exit(shell_completed.result())
         else:
