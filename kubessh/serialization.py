@@ -94,12 +94,12 @@ def merge_dictionaries(a, b, path=None, update=True):
 
 _FakeResponse = namedtuple('_FakeResponse', ['data'])
 
-def make_pod_from_dict(dict_):
+def make_api_object_from_dict(dict_, kind=client.V1Pod):
     # FIXME: We can't use the 'deserialize' function since
     # that expects a response object!
     return SERIALIZATION_API_CLIENT.deserialize(
         _FakeResponse(data=json.dumps(dict_)),
-        client.V1Pod
+        kind
     )
 
 

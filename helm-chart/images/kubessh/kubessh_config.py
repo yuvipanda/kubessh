@@ -25,3 +25,6 @@ elif config['auth']['type'] == 'dummy':
 
 if 'podTemplate' in config:
     c.UserPod.pod_template = config['podTemplate']
+
+if 'pvcTemplates' in config:
+    c.UserPod.pvc_templates = config['pvcTemplates']
