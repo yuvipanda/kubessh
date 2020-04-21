@@ -22,6 +22,8 @@ elif config['auth']['type'] == 'gitlab':
 elif config['auth']['type'] == 'dummy':
     c.KubeSSH.authenticator_class = DummyAuthenticator
 
+if 'defaultNamespace' in config:
+    c.KubeSSH.default_namespace = config['defaultNamespace']
 
 if 'podTemplate' in config:
     c.UserPod.pod_template = config['podTemplate']
