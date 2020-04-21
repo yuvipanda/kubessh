@@ -239,7 +239,7 @@ class UserPod(LoggingConfigurable):
                     elif e.status == 403:
                         t, v, tb = sys.exc_info()
                         try:
-                            pvc = await self._run_in_executor(v1.read_namespaced_persistent_volume_claim, pvc_spec['metadata']['name'], self.namespace, pvc_spec)
+                            pvc = await self._run_in_executor(v1.read_namespaced_persistent_volume_claim, pvc_spec.metadata.name, self.namespace, pvc_spec)
                         except:
                             raise v.with_traceback(tb)
                         self.log.info(f"PVC {pvc_spec.metadata.name} already exists, possibly have reached quota.")
