@@ -66,6 +66,15 @@ entries:
     version: 0.0.1-n001.h419fabf
   - apiVersion: v1
     appVersion: "0.1"
+    created: "2020-04-23T05:20:40.437128115Z"
+    description: Spawn Kubernetes pods for SSH users
+    digest: d1c337ab16185e43c90f7b3e70eeb30b74650f4794c6a62afb0d05a0d117ec3a
+    name: kubessh
+    urls:
+    - https://yuvipanda.github.io/kubessh/kubessh-0.0.1-n001.h3f0efc2.tgz
+    version: 0.0.1-n001.h3f0efc2
+  - apiVersion: v1
+    appVersion: "0.1"
     created: "2020-02-28T13:37:44.709558697Z"
     description: Spawn Kubernetes pods for SSH users
     digest: 70d0d768757bf856222e3a82f145feeaf6050269b90d375af4f071df148e28de
@@ -109,4 +118,4 @@ entries:
     urls:
     - https://yuvipanda.github.io/kubessh/kubessh-0.0.1-n001.h0a17e25.tgz
     version: 0.0.1-n001.h0a17e25
-generated: "2020-03-15T20:08:27.171198048Z"
+generated: "2020-04-23T05:20:40.436518515Z"
