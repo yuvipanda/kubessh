@@ -16,7 +16,7 @@ from concurrent.futures import ThreadPoolExecutor
 from traitlets.config import LoggingConfigurable
 from traitlets import Dict, Unicode, List, default
 
-from .serialization import make_pod_from_dict
+from .serialization import make_api_object_from_dict
 
 try:
     kubernetes.config.load_incluster_config()
@@ -67,6 +67,22 @@ class UserPod(LoggingConfigurable):
         This should be a dict containing a fully specified Kubernetes
         Pod object. Specific components of it may be changed to
         match the configuration of the Shell object requested.
+        """,
+        config=True
+    )
+
+    pvc_templates = List(
+        [],
+        help="""
+        List of templates for creating user persistent volume claims.
+
+        Elements should be dicts with fully specified Kubernetes
+        PersistentVolumeClaim objects. If empty (the default), no persistent
+        volumes will be created. The templates must ensure that claim names are
+        unique by including the string '{username}', which is expanded to the
+        name of the user that the shell belongs to. In order to use the created
+        persistent volumes, they should be referenced in the pod_template's
+        spec.volumes.
         """,
         config=True
     )
@@ -152,7 +168,7 @@ class UserPod(LoggingConfigurable):
         return ','.join([f'{k}={v}' for k, v in labels.items()])
 
     def make_pod_spec(self):
-        pod = make_pod_from_dict(self._expand_all(self.pod_template))
+        pod = make_api_object_from_dict(self._expand_all(self.pod_template), k.V1Pod)
         pod.metadata.name = self.pod_name
 
         if pod.metadata.labels is None:
@@ -160,6 +176,15 @@ class UserPod(LoggingConfigurable):
         pod.metadata.labels.update(self.required_labels)
 
         return pod
+
+    def make_pvc_spec(self, template):
+        pvc = make_api_object_from_dict(self._expand_all(template), k.V1PersistentVolumeClaim)
+
+        if pvc.metadata.labels is None:
+            pvc.metadata.labels = {}
+        pvc.metadata.labels.update(self.required_labels)
+
+        return pvc
 
     async def ensure_running(self):
         """
@@ -200,6 +225,27 @@ class UserPod(LoggingConfigurable):
         if not pod:
             # There is no pod, so start one!
             yield PodState.STARTING
+
+            # create persistent volumes, if any
+            for template in self.pvc_templates:
+                pvc_spec = self.make_pvc_spec(template)
+                try:
+                    pvc = await self._run_in_executor(v1.create_namespaced_persistent_volume_claim, self.namespace, pvc_spec)
+                    self.log.info(f"Successfully created PVC {pvc.metadata.name}")
+                    self.log.debug(pvc)
+                except kubernetes.client.rest.ApiException as e:
+                    if e.status == 409:
+                        self.log.info(f"PVC {pvc_spec.metadata.name} already exists, did not create a new PVC.")
+                    elif e.status == 403:
+                        t, v, tb = sys.exc_info()
+                        try:
+                            pvc = await self._run_in_executor(v1.read_namespaced_persistent_volume_claim, pvc_spec.metadata.name, self.namespace, pvc_spec)
+                        except:
+                            raise v.with_traceback(tb)
+                        self.log.info(f"PVC {pvc_spec.metadata.name} already exists, possibly have reached quota.")
+                    else:
+                        raise
+
             pod = await self._run_in_executor(
                 v1.create_namespaced_pod,
                 self.namespace, self.make_pod_spec()
