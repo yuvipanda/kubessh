@@ -5,6 +5,7 @@ from ptyprocess import PtyProcess
 import time
 import argparse
 import os
+import sys
 from kubernetes import client as k
 import kubernetes.config
 import escapism
