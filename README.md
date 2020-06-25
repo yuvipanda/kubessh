@@ -1,6 +1,11 @@
 <!-- Try to keep this in sync with docs/index.md -->
 # KubeSSH
 
+[![Documentation Status](https://readthedocs.org/projects/kubessh/badge/?version=latest&style=flat)](https://docs.kubessh.org)
+![](https://github.com/yuvipanda/kubessh/workflows/Publish%20chart/badge.svg)
+[![PyPI version](https://badge.fury.io/py/kubessh.svg)](https://badge.fury.io/py/kubessh)
+
+
 KubeSSH brings the familiar SSH experience to a modern cluster manager.
 
 > I have some code that requires more RAM / CPU / GPUs / Network / Time to run than my laptop can offer.
