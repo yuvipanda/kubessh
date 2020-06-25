@@ -1,4 +1,7 @@
+<!-- Try to keep this in sync with docs/index.md -->
 # KubeSSH
+
+KubeSSH brings the familiar SSH experience to a modern cluster manager.
 
 > I have some code that requires more RAM / CPU / GPUs / Network / Time to run than my laptop can offer.
 > What is the simplest, most user friendly way to run this code?
@@ -23,7 +26,7 @@ SSH.
    software is available. No waits for admins to install specific packages, or conflicts
    with packages needed by other users.
 2. Strong resource guarantees (CPU, RAM, GPUs, etc) prevent users from exhausting resources
-   on any single login node. 
+   on any single login node.
 3. Can scale dynamically to a very large number of simultaneous users.
 4. Authentication and Authorization can be much more dynamic, since we are no longer
    tied to the traditional POSIX model of user accounts. For example, you can allow
