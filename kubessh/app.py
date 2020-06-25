@@ -113,6 +113,7 @@ class KubeSSH(Application):
 
 
     def initialize(self, *args, **kwargs):
+        super().initialize(*args, **kwargs)
         self.load_config_file(self.config_file)
         self.init_logging()
 
