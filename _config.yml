@@ -4,3 +4,6 @@ description:
 theme: jekyll-theme-minimal
 
 repository: yuvipanda/kubessh
+
+stablecharts:
+  - kubessh
