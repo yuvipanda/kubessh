@@ -35,6 +35,19 @@ SSH.
    Kubernetes can do, without having to set up `kubectl` and friends on their local
    computers.
 
+## Installation
+
+You can use [helm.sh](https://helm.sh) to install KubeSSH onto your kubernetes
+cluster.
+
+```{toctree}
+---
+maxdepth: 1
+---
+
+install
+```
+
 ## Contributing
 
 KubeSSH is a fairly new project, with lots of avenues to contribute!
