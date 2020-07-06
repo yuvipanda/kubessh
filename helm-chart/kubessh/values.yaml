@@ -1,3 +1,6 @@
+# Required to run
+hostKey:
+
 replicaCount: 1
 
 image:
