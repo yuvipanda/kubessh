@@ -37,7 +37,7 @@ SSH.
 
 ## Installation
 
-You can use [helm.sh](https://helm.sh) to install KubeSSH onto your kubernetes
+You can use [helm](https://helm.sh) to install KubeSSH onto your kubernetes
 cluster.
 
 ```{toctree}
@@ -46,6 +46,18 @@ maxdepth: 1
 ---
 
 install
+```
+
+## Customization
+
+Once installed, you can customize KubeSSH to meet your needs
+
+```{toctree}
+---
+maxdepth: 2
+---
+
+customization/index
 ```
 
 ## Contributing
