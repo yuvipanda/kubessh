@@ -5,7 +5,7 @@ replicaCount: 1
 
 image:
   repository: yuvipanda/kubessh-kubessh
-  tag: bbba594
+  tag: set-by-chartpress
   pullPolicy: Always
 
   name: yuvipanda/kubessh-kubessh
