@@ -1,4 +1,7 @@
-<!-- Try to keep this in sync with docs/index.md -->
+# INACTIVE
+
+I'm currently focusing my efforts on [jupyterhub-ssh](https://github.com/yuvipanda/jupyterhub-ssh) instead. Feel free to fork and continue working on this :) <3
+
 # KubeSSH
 
 [![Documentation Status](https://readthedocs.org/projects/kubessh/badge/?version=latest&style=flat)](https://docs.kubessh.org)
