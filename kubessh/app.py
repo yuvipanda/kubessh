@@ -16,6 +16,7 @@ from kubessh.pod import UserPod, PodState
 from kubessh.authentication import Authenticator
 from kubessh.authentication.github import GitHubAuthenticator
 
+import kubessh.sftp # unused, sets up the asyncssh wiring
 
 class KubeSSH(Application):
     config_file = Unicode(
@@ -137,7 +138,8 @@ class KubeSSH(Application):
             server_host_keys=[self.ssh_host_key],
             encoding=None,
             agent_forwarding=False, # The cause of so much pain! Let's not allow this by default
-            keepalive_interval=30 # FIXME: Make this configurable
+            keepalive_interval=30, # FIXME: Make this configurable
+            sftp_factory=True
         )
 
 app = KubeSSH()

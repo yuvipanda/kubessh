@@ -30,3 +30,9 @@ if 'podTemplate' in config:
 
 if 'pvcTemplates' in config:
     c.UserPod.pvc_templates = config['pvcTemplates']
+
+if 'sftpBinaryUploadPath' in config:
+    c.KubeSFTPServerHandler.sftp_binary_upload_path = config['sftpBinaryUploadPath']
+
+if 'sftpBinarySourcePath' in config:
+    c.KubeSFTPServerHandler.sftp_binary_source_path = config['sftpBinarySourcePath']
